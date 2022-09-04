@@ -1,0 +1,17 @@
+####file link in Linux
+soft(aqua): like short cut in windows, if orignal file has been delete, the soft linked file can not be open
+hard: through inode, need delete orignal file and the hard linked file, data will be sync both at the two files, but the two files needs in the same file system and can not apply on directory
+
+### ln
+default is hard link
+soft link: -s, --symbolic              make symbolic links instead of hard links
+
+example:
+gcc hello.c -o hello
+ln hello hello_hard
+ln hello hello_soft (please use absolute path if in different folder)
+ll -i hello*
+the inode number of hello and hello1 are the same
+
+copy soft linked file:
+cp -d hello_soft  (absolute path?)

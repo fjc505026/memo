@@ -1,0 +1,153 @@
+正规表示法与通配符是完全不一样的东西！！因为『通配符 (wildcard) 代表的是 bash 操作接口的一个功能』，但正规表示法则是一种字符串处理的表示方式！
+在通配符当中的 * 代表的是『 0 ~ 无限多个字符』的意思，但是在正规表示法当中， * 则是『重复 0 到无穷多个的前一个 RE 字符
+
+『ls -l a* 』代表的是以 a 为开头的任何档名的文件, but in REG, ls | grep -n '^a.*'
+
+语系影响： LANG=C, A-Za-z ,  LANG=zh_TW,  aAbB-zZ
+兼容于 POSIX 的标准， C语系
+
+grep -ivn 'keyword'  file.txt
+****REG
+[]: 
+'t[ae]st',  test,taste
+'[^g]oo' ：oo 前面不能是 g 就
+***'[^a-z]oo'：oo 前面不想要有小写字符   '[^[:lower:]]oo'    //[:lower:]=>a-z
+'[0-9]'： 抓取数字  '[[:digit:]]' 		        //'[:digit:]'=>0-9
+
+行首与行尾字符 ^ $
+'^the' : 列出只在行首的the 
+***'^[a-z]'：列出开头是小写字符的  ， '^[[:lower:]]'
+'^[^a-zA-Z]' ：不想要开头是英文字母, ^ 符号，在字符集合符号(括号[])之内与之外是不同的！在 [] 内代表『反向选择』，在 [] 之外则代表定位在行首的意义
+ '\.$'  :以小数点 (.)为行尾结束 ，用跳脱字符(\)来加以解除其特殊
+ '^$' ：空白行
+-v '^$' ：不要空白行   
+-v '^#' ：代表『不要开头是 # 的那行』喔
+
+. (小数点)：代表『一定有一个任意字符』的意思；
+* (星星号)：代表重复前一个字符， 0 到无穷多次的意思，为组合形态
+.* 就代表零个或多个任意字符
+
+'g..d'： good, g与d 之间一定要存在两个字符
+o*: oo,ooo,ooo:  有空字符或一个 o 以上的字符
+ooo* :两个 o 以上的字符串
+'goo*g':gog, goog, gooog
+'g*g': g,gg,ggg..
+'g.*g' :g....g
+
+限定连续 RE 字符范围 {}
+'o\{2\}': 两个o,注意ooo也会被搜索出来
+'go\{2,5\}g： g 后面接 2 到 5 个 o ，然后再接一个 g 
+'go\{2,\}g' ：2 个o 以上的 goooo....g 
+
+
+grep '\*' /etc/* 2> /dev/null //找/etc下面一层所有的*
+grep '\*' $(find /etc -type f ) 2> /dev/null  //找/etc下面所有层所有的*， -l 只列出文档吗名
+//如果要找的是全系统 (/)  a.先用 find 去找出文件；  b.用 xargs 将这些文件每次丢 10 个给 grep 来作为参数处理； c.grep 实际开始搜寻文件内容
+find / -type f 2> /dev/null | xargs -n 10 grep '\*'
+
+****sed 工具 :裁剪修改，将数据进行取代、删除、新增、撷取特定行等等的功能,  一般作用于行
+sed [-nefr] [动作]
+-n ：使用安静(silent)模式。在一般 sed 的用法中，所有来自 STDIN 的数据一般都会被列出到屏幕上。但如果加上 -n 参数后，则只有经过 sed 特殊处理的那一行(或者动作)才会被列出来。
+-e ：直接在指令列模式上进行 sed 的动作编辑；
+-f ：直接将 sed 的动作写在一个文件内， -f filename 则可以执行 filename 内的 sed 动作；
+-r ：sed 的动作支持的是延伸型正规表示法的语法。(预设是基础正规表示法语法)
+-i ：直接修改读取的文件内容，而不是由屏幕输出。
+动作说明： [n1[,n2]]function
+n1, n2 ：不见得会存在，一般代表『选择进行动作的行数』，举例来说，如果我的动作
+ 是需要在 10 到 20 行之间进行的，则『 10,20[动作行为] 』
+function 有底下这些咚咚：
+a ：新增， a 的后面可以接字符串，而这些字符串会在新的一行出现(目前的下一行)～  sed '位置a新的字符串'
+c ：取代， c 的后面可以接字符串，这些字符串可以取代 n1,n2 之间的行！
+d ：删除，因为是删除啊，所以 d 后面通常不接任何咚咚；
+i ：插入， i 的后面可以接字符串，而这些字符串会在新的一行出现(目前的上一行)；
+p ：打印，亦即将某个选择的数据印出。通常 p 会与参数 sed -n 一起运作～
+s ：取代，可以直接进行取代的工作哩！通常这个 s 的动作可以搭配正规表示法！例如 1,20s/old/new/g 就是啦！ sed 's/要被取代的字符串/新的字符串/g'
+
+nl /etc/passwd | sed '2,5d  :第 2~5 行删除！
+nl /etc/passwd | sed '2a drink tea':，在第二行后(亦即是加在第三行)加上『drink tea?』字样！
+nl /etc/passwd | sed '2,5c No 2-5 number' : 第 2-5 行的内容取代成为『No 2-5 number』呢？
+nl /etc/passwd | sed -n '5,7p': /etc/passwd 文件内的第 5-7 行, -n 必要
+
+获得IP addr:        ifconfig eth0 | grep 'inet ' | sed 's/^.*inet //g'| sed 's/ *netmask.*$//g'  ：192.168.1.100
+删除掉批注之后的数据和删除掉空白行: cat /etc/man_db.conf | grep 'MAN'| sed 's/#.*$//g' | sed '/^$/d'
+直接修改文件内容(危险动作)(-i) ： 
+每一行结尾若为 . 则换成 !  ：  sed -i 's/\.$/\!/g' regular_express.txt
+最后一行加入『# This is a test』： sed -i '$a # This is a test' regular_express.txt
+
+****延伸正规表示法 egrep or grep -e
+
+   grep -v '^$' regular_express.txt | grep -v '^#'  //去除空白行与行首为 # 的行列
+=> egrep -v '^$|^#' regular_express.txt
+
+o+: 一个或以上的o
+o?:空或一个o,            note: o+ 加 o? 等于o*
+|:或
+():群组字符串， egrep -n 'g(la|oo)d' regular_express.txt   :搜寻 (glad) 或 (good) 
+()+:多个重复群组的判别,echo 'AxyzxyzxyzxyzC' | egrep 'A(xyz)+C': 开头A，结尾C， 中间一个或以上‘xyz’
+
+
+****格式化打印： printf
+printf '打印格式' 实际内容
+格式方面的几个特殊样式：
+ \a 警告声音输出
+ \b 退格键(backspace)
+ \f 清除屏幕 (form feed)
+ \n 输出新的一行
+ \r 亦即 Enter 按键
+ \t 水平的 [tab] 按键
+ \v 垂直的 [tab] 按键
+ \xNN NN 为两位数的数字，可以转换数字成为字符。
+关于 C 程序语言内，常见的变数格式
+ %ns 那个 n 是数字， s 代表 string ，亦即多少个字符；
+ %ni 那个 n 是数字， i 代表 integer ，亦即多少整数字数；
+ %N.nf 那个 n 与 N 都是数字， f 代表 floating (浮点)，如果有小数字数，
+ 假设我共要十个位数，但小数点有两位，即为 %10.2f 啰！
+ printf '%10s %5i %5i %5i %8.2f \n' $(cat printf.txt | grep -v Name)
+
+****数据处理工具:awk ，对不同行（NF），不同列处理（$0,$1..）
+awk '条件类型 1{动作 1} 条件类型 2{动作 2} ...' filename ，一般作用于列
+last -n 5 | awk '{print $1 "\t" $3}' //取第1,3列，以tab隔开
+NF 每一行 ($0) 拥有的字段总数
+NR 目前 awk 所处理的是『第几行』数据
+FS 目前的分隔字符，默认是空格键
+
+last -n 5| awk '{print $1 "\t lines: " NR "\t columns: " NF}'
+
+条件:
+> 大于
+< 小于
+>= 大于或等于
+<= 小于或等于
+== 等于
+!= 不等于
+
+cat /etc/passwd | awk 'BEGIN {FS=":"} $3 < 10 {print $1 "\t " $3}'  //第三栏小于 10 以下的数据，并且仅列出账号与第三栏
+cat pay1.txt|awk 'NR==1{printf"%-6s %5s %5s %5s %6s\n",$1,$2,$3,$4, "Total"} NR>=2{total = $2 + $3 + $4; printf"%-6s %5s %5s %5s %10.2f\n",$1,$2,$3,$4,total}'
+*awk 的指令间隔：所有 awk 的动作，亦即在 {} 内的动作，如果有需要多个指令辅助时，可利用分号『;』间隔， 或者直接以 [Enter] 按键来隔开每个指令，
+*逻辑运算当中，如果是『等于』的情况，则务必使用两个等号『==』！
+*格式化输出时，在 printf 的格式设定当中，务必加上 \n ，才能进行分行！
+*与 bash shell 的变量不同，在 awk 当中，变量可以直接使用，不需加上 $ 符号。
+
+****文件比对工具 diff
+cat /etc/passwd | sed -e '4d' -e '6c no six line' > passwd.new  //delete line4, change line 6 to no six line
+diff passwd.old passwd.new  //比较文件，也可比较文件夹
+4d3 <==左边第四行被删除 (d) 掉了，基准是右边的第三行
+< adm:x:3:4:adm:/var/adm:/sbin/nologin <==这边列出左边(<)文件被删除的那一行内容
+6c5 <==左边文件的第六行被取代 (c) 成右边文件的第五行
+< sync:x:5:0:sync:/sbin:/bin/sync <==左边(<)文件第六行内容
+---
+> no six line <==右边(>)文件第五行内容
+
+***cmp： 主要比对两个文件，利用『字节』单位去比对，
+
+***patch:将旧的文件升级成为新的文件
+diff -Naur passwd.old passwd.new > passwd.patch  //一般使用 diff 制作出来的比较文件通常使用扩展名为 .patch 
+cat passwd.patch
+
+-p ：后面可以接几层目录。0则是同一层，依据建立 patch 文件所在目录来进行目录的删减啰
+-R ：代表还原，将新的文件还原成原来旧的版本。
+更新旧版数据 patch -p0 < passwd.patch
+恢复旧文件的内容：  patch -R -p0 < passwd.patch
+
+****文件打印准备： pr 
+pr /etc/man_db.conf //出现『文件时间』、『文件档名』及『页码』三大项目。

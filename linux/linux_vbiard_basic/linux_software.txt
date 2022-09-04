@@ -1,0 +1,108 @@
+核心库大多放置在/usr/include, /usr/lib, /usr/lib64    kernel 的函式库  /lib/modules
+
+gcc -c  *.c //generate object file
+gcc -o   target  obj1.o obj2.o // use object files to generate target binary file
+
+
+包含<math.h>// libm.so 这个库，在 /lib, /lib64, libm.so -> -lm, l加入某个库， -L加入dir
+gcc sin.c -lm -L/lib -L/lib64 <==重点在 -lm
+gcc sin.c -lm -I/usr/include //<stdio.h> //搜寻相关的 include 文件的目录
+
+make 语法
+vi makefile
+LIBS = -lm
+OBJS = main.o haha.o sin_value.o cos_value.o
+main: ${OBJS}
+ gcc -o main ${OBJS} ${LIBS}
+clean:
+ rm -f main ${OBJS}
+
+1. 变量与变量内容以『=』隔开，同时两边可以具有空格；
+2. 变量左边不可以有 <tab> ，例如上面范例的第一行 LIBS 左边不可以是 <tab>；
+3. 变量与变量内容在『=』两边不能具有『:』；
+4. 在习惯上，变数最好是以『大写字母』为主；
+5. 运用变量时，以 ${变量} 或 $(变量) 使用；
+6. 在该 shell 的环境变量是可以被套用的，例如提到的 CFLAGS 这个变数！
+7. 在指令列模式也可以给予变量。
+$@：代表目前的目标(target)
+
+环境变量取用的规则
+1. make 指令列后面加上的环境变量为优先；
+2. makefile 里面指定的环境变量第二；
+3. shell 原本具有的环境变量第三。
+
+为了方便 Tarball 的管理
+1. 最好将 tarball 的原始数据解压缩到 /usr/local/src 当中；
+2. 安装时，最好安装到 /usr/local 这个默认路径下；
+3. 考虑未来的反安装步骤，最好可以将每个软件单独的安装在 /usr/local 底下；
+4. 为安装到单独目录的软件之 man page 加入 man path 搜寻：
+	如果你安装的软件放置到 /usr/local/software/ ，那么 man page 搜寻的设定中，可能就得要在/etc/man_db.conf 内的 40~50 行左右处，写入如下的一行：
+	MANPATH_MAP /usr/local/software/bin /usr/local/software/man，这样才可以使用 man 来查询该软件的在线文件啰！
+
+cd /usr/local/src 
+tar -zxvf /root/ntp-4.2.8p3.tar.gz
+cd ntp-4.2.8p3
+vi INSTALL 
+./configure --help | more
+./configure --prefix=/usr/local/ntp --enable-all-clocks --enable-parse-clocks 
+make clean; make
+make check
+make install
+
+****函式库管理
+***静态函式库：
+*扩展名：(扩展名为 .a)： 这类的函式库通常扩展名为 libxxx.a 的类型；
+*编译行为： 这类函式库在编译的时候会直接整合到执行程序当中，所以利用静态函式库编译成的文件会比较大一些喔；
+*独立执行的状态： 这类函式库最大的优点，就是编译成功的可执行文件可以独立执行，而不需要再向外部要求读取函式库的内容 (请参照动态函式库的说明)。
+*升级难易度： 虽然执行档可以独立执行，但因为函式库是直接整合到执行档中， 因此若函式库升级时，整个执行档必须要重新编译才能将新版的函式库
+整合到程序当中。 也就是说，在升级方面，只要函式库升级了，所有将此函式库纳入的程序都需要重新编译！
+
+***动态函式库
+*扩展名：(扩展名为 .so)  这类函式库通常扩展名为 libxxx.so 的类型；
+*编译行为：  动态函式库与静态函式库的编译行为差异挺大的。 与静态函式库被整个捉到程序中不同的，动态函式库在 编译的时候，
+在程序里面只有一个『指向 (Pointer)』的位置而已。也就是说，动态函式库的内容并没有被整合到执行档当中，而是当执行档要使用到函式库的机制时，
+程序才会去读取函式库来使用。由于执行文件当中仅具有指向动态函式库所在的指标而已， 并不包含函式库的内容，所以他的文件会比较小一点。
+* 独立执行的状态：  这类型的函式库所编译出来的程序不能被独立执行， 因为当我们使用到函式库的机制时，程序才会去读取函式库，
+所以函式库文件『必须要存在』才行，而且，函式库的『所在目录也不能改变』，因为我们的可执 行文件里面仅有『指标』亦即当要取用该动态函式库时， 程序会主动去某个路径下读取，呵呵！所以动态
+函式库可不能随意移动或删除，会影响很多相依的程序软件喔！
+*升级难易度： 虽然这类型的执行档无法独立运作，然而由于是具有指向的功能， 所以，当函式库升级后，执行档根本不 需要进行重新编译的行为，
+因为执行档会直接指向新的函式库文件 (前提是函式库新旧版本的档名相同喔！)。
+
+
+ldconfig 与 /etc/ld.so.conf //将动态函式库加载高速缓存cache当中 
+
+1. 首先，我们必须要在 /etc/ld.so.conf 里面写下 『想要读入高速缓存当中的动态函式库所在的目录』，注意喔， 是目录而不是文件；
+2. 接下来则是利用 ldconfig 这个执行档将 /etc/ld.so.conf 的资料读入快取当中；
+3. 同时也将数据记录一份在 /etc/ld.so.cache 这个文件当中吶！
+
+ldconfig [-f conf] [ -C cache]
+选项与参数：
+-f conf ：那个 conf 指的是某个文件名，也就是说，使用 conf 作为 libarary函式库的取得路径，而不以 /etc/ld.so.conf 为默认值
+-C cache：那个 cache 指的是某个文件名，也就是说，使用 cache 作为快取暂存的函式库资料，而不以 /etc/ld.so.cache 为默认值
+-p ：列出目前有的所有函式库资料内容 (在 /etc/ld.so.cache 内的资料！)
+
+范例一：假设我的 Mariadb 数据库函式库在 /usr/lib64/mysql 当中，如何读进 cache ？
+vim /etc/ld.so.conf.d/vbird.conf <- /usr/lib64/mysql 
+ldconfig 
+ldconfig -p
+
+
+程序的动态函式库解析： ldd
+ldd [-vdr] [filename]
+-v ：列出所有内容信息；
+-d ：重新将资料有遗失的 link 点秀出来！
+-r ：将 ELF 有关的错误内容秀出来！
+
+example: ldd /usr/bin/passwd      //找出 /usr/bin/passwd 这个文件的函式库数据
+ 	  ldd -v /lib64/libc.so.6 //找出 /lib64/libc.so.6 这个函式的相关其他函式库！
+
+
+
+
+
+
+
+
+
+
+

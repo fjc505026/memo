@@ -1,0 +1,114 @@
+----extension: BAT or CMD
+----Env Var: C:\Application\bin
+
+----Command syntax:
+
+1.ver: show version of MS-DOS
+
+2.assoc: displays all the file extensions
+       e.g.  assoc | find ".ext" //displays all files with ".ext"
+
+3.cd: change to diff dir, or displays current dir (without args)
+    e.g cd //display currrent dir
+
+4.cls: clean screen                  ->clean
+
+5.Copy [src] [des]: copy files       -> cp
+
+6.del [filename] : deletes files     -> rm   
+                 e.g  del /s *.txt // del all files recursively
+                      del /p /s *.txt // del all files recursively,ask for permission
+
+7.dir: lists the content of a DIR   ->ls
+       note: /s->recursively, /b-> complete path, /a->hidden&sys files, /ah->hidden files only
+
+8.DATE ： system date
+        e.g echo %DATE% -> Mon 12/28/2015
+
+9.ECHO : e.g echo on , @echo off, echo %PATH%
+
+10.exit: exit the DOS console
+
+11.md [new dir]: create a new DIR  -> mkdir
+
+12.move [src] [des]: move files    ->mv
+
+13.PATH : display or set the path (env var) , e.g Echo %PATH%
+
+14.pause: prompts the user and wait for a line of input
+
+15.prompt[newpromptname]: change or reset the cmd.exe, e.g prompt myprompt$G //show myprompt> in cmd
+
+16.rd [dir] : removes empty DIR,       ->rmdir
+
+17.ren [old file/dir] [new file/dir]: renames the file/dir   ->mv
+
+18.REM: use for comment
+
+19.START [programmename]: start a program in a new window or open a DOC
+                         e.g start notepad.exe
+20.TIME: current system time. e.g echo %TIME%
+
+21.TYPE [file]: print the content of a file to console //like cat
+
+22.VOL: display the current volumn labels
+
+23.attrib: disply or set the attributes  ->ls -l// show RWX right
+
+24.chkdsk: check the disk for any problems
+
+25.CHOICE /c [option] /m [message]: list a option with msg to user via console
+							e.g:	echo "A:10MB" 
+									echo "B:20MB" 
+									echo "C:30MB" 
+									choice /c ABC /m "What is your option A , B or C"
+
+26.cmd : invoke another cmd prompt
+
+27.comp [srcA] [srcB]: compare 2 files size
+
+28. find [test] [des] : search for a string in file or input
+
+----Script programming
+1. echo off // avoid cmd to show during code is executed
+2. Rem      // for commenting, :: also works
+3. dir      //take the the content of a location 
+4. >       //redirect the output
+5. echo "program has completed"
+
+----cmd line arguments
+%1-> first arg   %2->2nd arg
+
+set /A variable-name=value
+	variable-name	:the name of the variable you want to set.
+	value 			: the value which needs to be set against the variable.
+	/A   			:This switch is used if the value needs to be numeric in nature.
+
+e.g:  	set message=Hello World 
+		echo %message%   //% get the value of vars, like $
+
+
+SETLOCAL/ENDLOCAL: make vars in local scope
+
+if(condition) do_something
+If (condition) (do_something) ELSE (do_something_else)
+
+
+Operator	Description	Example
++	Addition of two operands	1 + 2 will give 3
+−	Subtracts second operand from the first	2 − 1 will give 1
+*	Multiplication of both operands	2 * 2 will give 4
+/	Division of the numerator by the denominator	3 / 2 will give 1.5
+%	Modulus operator and remainder of after an integer/float division	3 % 2 will give 1
+
+
+
+EQU	Tests the equality between two objects	2 EQU 2 will give true
+NEQ	Tests the difference between two objects	3 NEQ 2 will give true
+LSS	Checks to see if the left object is less than the right operand	2 LSS 3 will give true
+LEQ	Checks to see if the left object is less than or equal to the right operand	2 LEQ 3 will give true
+GTR	Checks to see if the left object is greater than the right operand	3 GTR 2 will give true
+GEQ	Checks to see if the left object is greater than or equal to the right operand	3 GEQ 2 will give true
+
+
+

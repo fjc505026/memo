@@ -1,0 +1,185 @@
+*********************** Class **************
+//Example:
+class Cylinder{
+public:
+	double base_radius {1.0};
+	double heigh {1.0};
+
+public:
+	double volume(){
+		return PI*base_radius*base_radius*height;
+	}
+
+};
+
+
+int main(){
+	Cylinder cylinder1;// create a object 
+
+	cylinder1.volume(); // call object method
+
+}
+
+
+Class member: can only be stack variables or pointer(since they can be uninitialised). Can't be reference. because reference can't never be leaved as uninitialsied.
+Class methods(function) can always access Class member variables(both for public and private)
+
+
+
+*************************Constructor********************
+//need to be public, act like init() 
+
+class Cylinder{
+//Properties
+private:
+	double base_radius {1.0};
+	double heigh {1.0};
+
+//Behaviors
+public:
+    //defualt hidden constructor
+     Cylinder(){        ==     Cylinder=default;
+	 }
+
+	//default constructor with no args, init a object with no args comes here. 
+	Cylinder(){
+		base_radius=2.0;
+		height=2.0;
+	}
+    // constructor with args, init a object with args comes here
+	Cylinder(double radius_param, double height_param){
+		base_radius=radius_param;
+		height= height_param;
+	}
+
+
+	double volume(){
+		return PI*base_radius*base_radius*height;
+	}
+
+};
+
+
+//if no any constructor, the class will have a default/hidden one
+// if have created a construct, the defual/hidden one will not exist
+
+
+************************setter/getter**********************
+
+class Cylinder{
+private:
+	double base_radius;
+	double heigh;
+
+public:
+	double get_base_radius(){
+		return base_radius;
+	}
+
+
+	double get_height(){
+		return height;
+	}
+
+	void set_base_radius(double radius_param){
+		base_radius=radius_param;
+	}
+
+	void set_height(double height_param){
+		height=height_param;
+	}
+	
+
+};
+
+****scope reslution 
+// create a Class method from outside of a Class
+double Cylinder::get_base_radius(){
+	return base_radius;
+}
+
+//create a new class
+Cylinder c1(10,2); //stack object
+Cylinder* c2 = new Cylinder(11,20); //Heap object, when call member or method, c2->member or (*c2).member
+delete c2;                          // remember to release memeory from heap
+c2=nullptr;
+
+
+********************Destructor********************
+//spcial methods that are called when an object dies
+
+class Dog{
+    public : 
+        Dog() = default;
+        Dog(std::string_view name_param, std::string_view breed_param, int  age_param);
+        ~Dog();  //alway void in args
+
+    private : 
+        std::string name;
+        std::string breed;
+        int * p_age{nullptr};
+};
+
+Dog::Dog(std::string_view name_param, std::string_view breed_param, int  age_param){
+    name = name_param;
+    breed = breed_param;
+    p_age = new int;   //dynamic allocation from Heap
+    *p_age = age_param;
+    std::cout << "Dog constructor called for " << name << std::endl;
+}
+
+Dog::~Dog(){
+    delete p_age;      //release memeory to Heap
+    std::cout << "Dog destructor called for : " << name << std::endl;
+}
+
+void some_func(){
+    Dog* p_dog = new Dog("Fluffy","Shepherd",2);
+
+    delete p_dog;// Causes for the destructor of Dog to be called
+}
+
+//NOTE: if take a object as args by copy, it will create a object in the functions, constructor and destructor, or excceed local scope
+
+
+*******************This**********************
+//a pointer point to current object, act like self
+Dog * p_dog = new Dog("Bobbi");
+
+p_dog->set_name("Bobbi2")->set_dog_breed("toy puto"); // to achive this, in the function, return this pointer, return this
+p_dog->set_name("Bobbi2").set_dog_breed("toy puto"); // to achive this, in the function, return this reference return *this, return the actual thing
+
+
+****************struct**************************
+//class memmber private by default
+//struct member public by default
+
+
+//sizeof a class will only returen its memebers size
+class Dog{
+    public : 
+     Dog() = default;
+     void prin_info(){
+
+     }
+     void do_something(){
+
+     }
+
+     private :
+      size_t leg_count; //8
+      size_t arm_count; //8
+      int * p_age; // 8
+};
+
+
+*************************inheritance**********************8
+class Persion{
+
+}
+
+class Engnieer : public Persion
+class CivilEngineer:public Engineer
+
+
+

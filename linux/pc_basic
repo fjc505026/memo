@@ -1,0 +1,23 @@
+
+PC hardware:
+
+CPU: core, hyper threading
+main memeory: DRAM,DDR, SDRAM
+Graphic card: PCI,PCIe3.0 x 4,8,16
+
+DISK: HDD,SSD
+Ethernet, USB,BIOS(ROM) ,CMOS 
+
+CMOS: 	record the setting in main board, like sys time, CPU vdds, freq, I/O addr,IRQ
+
+PC software:
+
+Kernel (OS): provide hardware driver,TCP/IC network. The implmentation of Kernel various betwween hardware arch tect, e.g Windows can run on X86, but not on ARM
+*manage hardware resource, like CPU, memeory, I/O device and file system
+*system call interface
+*process control
+*memory management
+*filesystem management
+*device drivers
+
+System call: provide open interface for development, it is a layer between Kernel and software				

@@ -1,0 +1,10 @@
+
+Charpter1.
+POSIX(Portable Operating System Interface):a standard to standardlise the interface between Kernel and applications
+
+
+check long-term support kernel: uname -r  https://www.kernel.org/releases.html
+
+计算机基础 	- http://www.study-area.org/compu/compu.html
+网络基础 		- http://www.study-area.org/network/network.html
+Linux distributions 的组成含有：『Linux Kernel + Free Software + Documentations(Tools) + 可完全安装的程序』

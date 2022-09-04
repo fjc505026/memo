@@ -1,0 +1,157 @@
+因为达成某个服务是需要一支 daemon 在背景中运作， 没有这支 daemon 就不会有 service。daemon为service实现， at需要atd, cron需要crond
+
+
+所有的服务启动脚本通通放置于 /etc/init.d/ 
+o 启动：/etc/init.d/daemon start
+o 关闭：/etc/init.d/daemon stop
+o 重新启动：/etc/init.d/daemon restart
+o 状态观察：/etc/init.d/daemon status
+
+独立启动模式 (stand alone)：服务独立启动，该服务直接常驻于内存中，提供本机或用户的服务行为，反应速度快。
+总管程序 (super daemon)：由特殊的 xinetd 或 inetd 这两个总管程序提供 socket 对应或 port 对应的管理。
+
+执行等级0-6,7个，1)单人维护模式、3)纯文本模式、5)文字加图形界面   而各个执行等级的启动脚本：/etc/rc.d/rc[0-6]/SXXdaemon 连结到 /etc/init.d/daemon
+
+systemctl [command] [unit]
+command 主要有：
+start ：立刻启动后面接的 unit
+stop ：立刻关闭后面接的 unit
+restart ：立刻关闭后启动后面接的 unit，亦即执行 stop 再 start 的意思
+reload ：不关闭后面接的 unit 的情况下，重载配置文件，让设定生效
+enable ：设定下次开机时，后面接的 unit 会被启动
+disable ：设定下次开机时，后面接的 unit 不会被启动
+status ：目前后面接的这个 unit 的状态，会列出有没有正在执行、开机预设执行否、登录等信息等！
+is-active ：目前有没有正在运作中
+is-enable ：开机时有没有预设要启用这个 unit
+
+
+systemctl list-unit-files  //列出所有已经安装的 unit 
+systemctl list-units --type=service --all // 只剩下 *.service 的项目才会出现喔
+
+systemctl [command] [unit.target]
+command:
+ get-default ：取得目前的 target
+ set-default ：设定后面接的 target 成为默认的操作模式
+ isolate ：切换到后面接的模式
+
+systemctl isolate multi-user.target //将目前的操作环境改为纯文本模式，关掉图形界面
+systemctl isolate graphical.target //要重新取得图形界面呢？
+systemctl poweroff 系统关机
+systemctl reboot 重新启动
+systemctl suspend 进入暂停模式
+systemctl hibernate 进入休眠模
+systemctl rescue 强制进入救援模式
+systemctl emergency 强制进入紧急救援模式
+
+****systemctl 分析各服务之间的相依性
+systemctl list-dependencies [unit] [--reverse]
+--reverse ：反向追踪谁使用这个 unit 的意思！
+
+/usr/lib/systemd/system/：，默认的启动脚本配置文件都放在这里
+/run/systemd/system/：系统执行过程中所产生的服务脚本，
+/etc/systemd/system/：管理员依据主机系统的需求所建立的执行脚本，
+/etc/sysconfig/*：几乎所有的服务都会将初始化的一些选项设定写入到这个目录下
+/var/lib/：一些会产生数据的服务
+/run/：放置了好多 daemon 的暂存档,lock file 以及 PID file 等等
+
+systemctl list-sockets
+
+cat /etc/services //service VS port
+
+
+sshd.service
+cat /usr/lib/systemd/system/sshd.service
+
+
+example,开启第二个vsftpd
+1预设的 port 21：使用 /etc/vsftpd/vsftpd.conf 配置文件，以及 /usr/lib/systemd/system/vsftpd.service 设定脚本；
+2.特殊的 port 555：使用 /etc/vsftpd/vsftpd2.conf 配置文件，以及 /etc/systemd/system/vsftpd2.service 设定脚本。
+# 1. 先建立好所需要的配置文件
+cd /etc/vsftpd
+cp vsftpd.conf vsftpd2.conf
+vsftpd.conf-> #listen_port=555
+
+# 2. 开始处理启动脚本设定
+cd /etc/systemd/system
+cp /usr/lib/systemd/system/vsftpd.service vsftpd2.service
+vim vsftpd2.service
+->Description=Vsftpd second ftp daemon     ExecStart=/usr/sbin/vsftpd /etc/vsftpd/vsftpd2.conf
+
+# 3. 重载 systemd 的脚本配置文件内容
+systemctl daemon-reload
+systemctl list-unit-files --all | grep vsftpd
+systemctl status vsftpd2.service  发现是disabled and dead
+systemctl restart vsftpd.service vsftpd2.service
+systemctl enable vsftpd.service vsftpd2.service
+systemctl status vsftpd.service vsftpd2.service
+
+netstat -tlnp 
+
+
+tty1~tty6 由getty@.service 提供  /usr/lib/systemd/system/getty@.service
+systemctl show getty.target
+源文件 src：执行服务名称@.service     //getty@.service
+执行文件 exe：执行服务名称@范例名称.service    //getty@tty1.service  , %I 指的就是『范例名称』
+
+example,开启第3个vsftpd ，接透过 vsftpd@.service 而无须重新设定启动脚本
+cat /usr/lib/systemd/system/vsftpd@.service
+cd /etc/vsftpd
+cp vsftpd.conf vsftpd3.conf
+vim vsftpd3.conf-》 listen_port=2121
+systemctl start vsftpd@vsftpd3.service
+systemctl status vsftpd@vsftpd3.service
+netstat -tlnp 
+
+
+example 备份服务backup.sh
+>> vim /backups/backup.sh
+#!/bin/bash
+source="/etc /home /root /var/lib /var/spool/{cron,at,mail}"
+target="/backups/backup-system-$(date +%Y-%m-%d).tar.gz"
+[ ! -d /backups ] && mkdir /backups
+tar -zcvf ${target} ${source} &> /backups/backup.log
+
+vim /etc/systemd/system/backup.service
+[Unit]
+Description=backup my server
+Requires=atd.service
+[Service]
+Type=simple
+ExecStart=/bin/bash -c " echo /backups/backup.sh | at now"
+[Install]
+WantedBy=multi-user.target
+# 因为 ExecStart 里面有用到 at 这个指令，因此， atd.service 就是一定要的服务！
+
+systemctl daemon-reload
+systemctl start backup.service
+systemctl status backup.service
+开机后 2 小时开始执行一次这个 backup.service
+自从第一次执行后，未来我每两天要执行一次 backup.service
+vim /etc/systemd/system/backup.timer
+[Unit]
+Description=backup my server timer
+[Timer]
+OnBootSec=2hrs
+OnUnitActiveSec=2days
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reload
+systemctl enable backup.timer
+systemctl restart backup.timer
+systemctl list-unit-files | grep backup
+systemctl show timers.target
+systemctl show backup.service
+systemctl show backup.timer
+
+
+
+
+
+
+
+
+
+
+
+

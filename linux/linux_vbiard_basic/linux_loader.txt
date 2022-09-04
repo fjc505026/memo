@@ -1,0 +1,228 @@
+****系统开机
+1. 加载 BIOS 的硬件信息与进行自我测试，并依据设定取得第一个可开机的装置；
+2. 读取并执行第一个开机装置内 MBR 的 boot Loader (亦即是 grub2, spfdisk 等程序)；
+3. 依据 boot loader 的设定加载 Kernel ，Kernel 会开始侦测硬件与加载驱动程序；
+4. 在硬件驱动成功后，Kernel 会主动呼叫 systemd 程序，并以 default.target 流程开机；
+   o systemd 执行 sysinit.target 初始化系统及 basic.target 准备操作系统；
+   o systemd 启动 multi-user.target 下的本机与服务器服务；
+   o systemd 执行 multi-user.target 下的 /etc/rc.d/rc.local 文件；
+   o systemd 执行 multi-user.target 下的 getty.target 及登入服务；
+   o systemd 执行 graphical 需要的服务
+
+开机流程主要是：BIOS、MBR、Loader、kernel+initramfs、systemd 等流程
+
+****BIOS, 开机自我测试与 MBR/GPT
+BIOS load CMOS configuration (com speeds, disk size/type,sys time, bus enable, I/O addrs,IRQ)
+BIOS self test
+BIOS load kernel image from disk (diff file format) to main memory, (INT 13, MBR 446Bytes)
+
+boot loader 主要的功能:
+提供选单：用户可以选择不同的开机项目，这也是多重引导的重要功能！
+载入核心文件：直接指向可开机的程序区段来开始操作系统；
+转交其他 loader：将开机管理功能转交给其他 loader 负责。
+
+****load kernel and initramfs
+Linux kernel->main memeory， 开始测试与驱动各个周边装置，包括储存装置、CPU、网络卡、声卡等等。(不一定使用BIOS的HW 检测装置)
+kernel 一般放置在/boot (/boot/vmlinuz), 驱动模块 在  /lib/modules/， 所以应该在不同的partition
+ls --format=single-column -F /boot
+
+initramfs(Initial RAM Filesystem)(/boot/initrd 或 /boot/initramfs),通过bootloader加载在main memeroy, 仿真为小型的文件系统根目录
+提供程序加载USB, RAID, LVM,SCSI,结束后重新call systemd
+lsinitrd /boot/initramfs-3.10.0-229.el7.x86_64.img
+
+**** 第一支程序 systemd 及使用 default.target 进入开机程序分析
+systemd 最主要的功能就是准备软件执行的环境，包括系统的主机名、网络设定、语系处理、文件系统格式及其他服务的启动等。 
+而所有的动作都会透过 systemd 的默认启动服务集合，亦即是 /etc/systemd/system/default.target 来规划 
+(default.target:multi-user.target or graphical.target )
+SystemV 	systemd
+init 0 		systemctl poweroff
+init 1 		systemctl rescue
+init 2-4 	systemctl isolate multi-user.target
+init 5 		systemctl isolate graphical.target
+init 6 		systemctl reboot
+
+systemd 开机流程：
+1. local-fs.target + swap.target：这两个 target 主要在挂载本机 /etc/fstab 里面所规范的文件系统与相关的内存置换空间。
+2. sysinit.target：这个 target 主要在侦测硬件，加载所需要的核心模块等动作。
+3. basic.target：加载主要的外围硬件驱动程序与防火墙相关任务
+4. multi-user.target 底下的其它一般系统或网络服务的加载
+5. 图形界面相关服务如 gdm.service 等其他服务的加载
+
+***sysinit.target 初始化系统、(让系统可以存取)
+特殊文件系统装置的挂载
+特殊文件系统的启用：包括磁盘阵列、网络驱动器 (iscsi)、LVM 文件系统
+开机过程的讯息传递与动画执行：使用 plymouthd 服务搭配 plymouth 指令
+日志式登录文件的使用：就是 systemd-journald 这个服务的启用啊！
+加载额外的核心模块：透过 /etc/modules-load.d/*.conf (单纯核心加载模块) 文件的设定,/etc/modprobe.d/*.conf：(模块参数)
+  example: FTP port:21->555,  /etc/modules-load.d/vbird.conf->nf_conntrack_ftp,  /etc/modprobe.d/vbird.conf->options nf_conntrack_ftp ports=555
+		 systemctl restart systemd-modules-load.service,   lsmod | grep nf_conntrack_ftp
+加载额外的核心参数设定：包括 /etc/sysctl.conf 以及 /etc/sysctl.d/*.conf 内部设定！
+启动系统的随机数生成器
+设定终端机 (console) 字形
+启动动态设备管理器：udevd 
+
+
+***basic.target 准备系统 (系统成为操作系统的基础)
+加载 alsa 音效驱动程序
+载入 firewalld 防火墙：
+加载 CPU 的微指令功能
+启动与设定 SELinux 的安全本文：
+当前开机信息写入到 /var/log/dmesg 当中
+从 /etc/sysconfig/modules/*.modules 及 /etc/rc.modules 加载管理员指定的模块
+加载 systemd 支持的 timer 功能；
+
+***systemd 启动 multi-user.target (主机服务，网络服务)
+/usr/lib/systemd/system (系统默认的服务启动脚本设定)
+/etc/systemd/system (管理员自己开发与设定的脚本设定)
+开机enable 某个unit： /etc/systemd/system/multi-user.target.wants/ 这个目录底下做个链接, 
+systemctl disable/enable vsftpd.service，就是rm or add system/multi-user.target.wants/vsftpd.service
+
+***systemd 启动 graphical.target (optional, depends on default.target)
+
+
+****核心与核心模块
+核心： /boot/vmlinuz 或 /boot/vmlinuz-version；
+核心解压缩所需 RAM Disk： /boot/initramfs (/boot/initramfs-version)；
+核心模块： /lib/modules/version/kernel 或 /lib/modules/$(uname -r)/kernel；
+核心原始码： /usr/src/linux 或 /usr/src/kernels/ (要安装才会有，预设不安装)
+
+核心版本： /proc/version
+系统核心功能： /proc/sys/kernel/
+
+核心模块的放置处是在： /lib/modules/$(uname -r)/kernel
+记录内核模块依懒性：/lib/modules/$(uname -r)/modules.dep
+example:若我做好一个网卡驱动程序，档名为 a.ko，该如何更新核心相依性？
+cp a.ko /lib/modules/$(uname -r)/kernel/drivers/net
+depmod
+A ：不加任何参数时， depmod 会主动的去分析目前核心的模块，并且重新写入/lib/modules/$(uname -r)/modules.dep 当中。若加入 -A 参数时，则 depmod
+  会去搜寻比 modules.dep 内还要新的模块，如果真找到新模块，才会更新。
+-n ：不写入 modules.dep ，而是将结果输出到屏幕上(standard out)；
+-e ：显示出目前已加载的不可执行的模块名称
+
+查看目前内核已加载模块：lsmod
+查看模模块信息： modinfo [-adln] [module_name|filename]
+-a ：仅列出作者名称；
+-d ：仅列出该 modules 的说明 (description)；
+-l ：仅列出授权 (license)；
+-n ：仅列出该模块的详细路径。
+
+
+***核心模块加载与移除
+insmod 则完全由使用者自行加载一个完整文件名的模块， 并不会主动的分析模块相依性。
+insmod [/full/path/module_name] [parameters]
+example: insmod /lib/modules/$(uname -r)/kernel/fs/fat/fat.ko; lsmod | grep fat
+rmmod [-fw] module_name 万一模块有相依属性的问题时，你将无法直接加载或移除该模块
+
+解决办法
+modprobe [-cfr] module_name
+-c ：列出目前系统所有的模块！(更详细的代号对应表)
+-f ：强制加载该模块；
+-r ：类似 rmmod ，就是移除某个模块啰～
+example:  modprobe vfat  //整文件名已经记录到/lib/modules/`uname -r`/modules.dep 
+ modprobe -r vfat
+
+
+****Boot Loader:Grub2
+Stage 1：执行 boot loader 主程序：
+必须要被安装在开机区 MBR or boot sector
+Stage 2：主程序加载配置文件：
+加载所有配置文件与相关的环境参数文件 (包括文件系统定义与主要配置文件grub.cfg)， 一般来说，配置文件都在 /boot 底下
+
+Grub2:主要任务之一：是从磁盘当中加载核心文件
+硬盘搜寻顺序 	在 Grub2 当中的代号 //msdos1是传统MBR
+第一颗(MBR) 	(hd0) (hd0,msdos1) (hd0,msdos2) (hd0,msdos3)....  //第一个分区槽boot sector->『(hd0,msdos1),第一个逻辑分区槽的boot sector 代号为(hd0,msdos5)
+第二颗(GPT) 	(hd1) (hd1,gpt1) (hd1,gpt2) (hd1,gpt3)....
+第三颗 (hd2) 	(hd2,1) (hd2,2) (hd2,3)....
+
+*** grub2 配置文件维护 /etc/default/grub 与 /etc/grub.d (不要修改grub.cfg)
+GRUB_TIMEOUT=5 # 指定预设倒数读秒的秒数
+GRUB_DEFAULT=saved # 指定预设由哪一个选单来开机，预设开机选单之意
+GRUB_DISABLE_SUBMENU=true # 是否要隐藏次选单，通常是藏起来的好！
+GRUB_TERMINAL_OUTPUT="console" # 指定数据输出的终端机格式，默认是透过文字终端机
+GRUB_CMDLINE_LINUX="rd.lvm.lv=centos/root rd.lvm.lv=centos/swap crashkernel=auto rhgb quiet" # 就是在 menuentry 括号内的 linux16 项目后续的核心参数
+GRUB_DISABLE_RECOVERY="true" # 取消救援选单的制作
+
+grub2-mkconfig -o /boot/grub2/grub.cfg
+
+选单建置的脚本 /etc/grub.d/*
+1.00_header：主要在建立初始的显示项目，包括需要加载的模块分析、屏幕终端机的格式、倒数秒数、选单
+是否需要隐藏等等，大部分在 /etc/default/grub 里面所设定的变量，大概都会在这个脚本当中被利用来重建
+grub.cfg 。
+2.10_linux：根据分析 /boot 底下的文件，尝试找到正确的 linux 核心与读取这个核心需要的文件系统模块与
+参数等，都在这个脚本运作后找到并设定到 grub.cfg 当中。 因为这个脚本会将所有在 /boot 底下的每一
+个核心文件都对应到一个选单，因此核心文件数量越多，你的开机选单项目就越多了。 如果未来你不想要
+旧的核心出现在选单上，那可以透过移除旧核心来处理即可。
+3.30_os-prober：这个脚本默认会到系统上找其他的 partition 里面可能含有的操作系统，然后将该操作系统做
+成选单来处理就是了。如果你不想要让其他的操作系统被侦测到并拿来开机，那可以在 /etc/default/grub 里
+面加上『 GRUB_DISABLE_OS_PROBER=true 』取消这个文件的运作。
+4.40_custom：如果你还有其他想要自己手动加上去的选单项目，或者是其他的需求，那么建议在这里补充即
+可！
+
+
+**直接指定核心开机:
+grub.cfg ->复制到40_custom
+example:强制 systemd 使用graphical.target 来启动 Linux 系统
+vim /etc/grub.d/40_custom
+menuentry 'My graphical CentOS, with Linux 3.10.0-229.el7.x86_64' --class rhel fedora
+ --class gnu-linux --class gnu --class os --unrestricted --id 'mygraphical'
+...
+...
+linux16 /vmlinuz-3.10.0-229.el7.x86_64 root=/dev/mapper/centos-root ro rd.lvm.lv=
+ centos/root rd.lvm.lv=centos/swap crashkernel=auto rhgb quiet
+ elevator=deadline systemd.unit=graphical.target
+ initrd16 /initramfs-3.10.0-229.el7.x86_64.img
+
+grub2-mkconfig -o /boot/grub2/grub.cfg
+
+**透过 chainloader 的方式移交 loader 控制权
+menuentry "Windows" {
+ insmod chain # 你得要先加载 chainloader 的模块对吧？
+ insmod ntfs # 建议加入 windows 所在的文件系统模块较佳！
+ set root=(hd0,1) # 是在哪一个分区槽～最重要的项目！
+ chainloader +1 # 请去 boot sector 将 loader 软件读出来的意思！
+}
+
+>>vim /etc/grub.d/40_custom
+menuentry 'Go to Windows 7' --id 'win7' {
+ insmod chain
+ insmod ntfs
+ set root=(hd0,msdos2)
+ chainloader +1
+}
+menuentry 'Go to MBR' --id 'mbr' {
+ insmod chain
+ set root=(hd0)
+ chainloader +1
+}
+
+
+***重制initramfs 文件, dracut / mkinitrd 
+dracut [-fv] [--add-drivers 列表] initramfs 檔名 核心版本
+-f ：强迫编译出 initramfs ，如果 initramfs 文件已经存在，则覆盖掉旧文件
+-f ：显示 dracut 的运作过程
+--add-drivers 列表：在原本的默认核心模块中，增加某些你想要的模块！模块位于核心所在目录/lib/modules/$(uname -r)/kernel/*
+initramfs 檔名 ：就是你需要的檔名！开头最好就是 initramfs，后面接版本与功能
+核心版本 ：预设当然是目前运作中的核心版本，不过你也可以手动输入其他不同版本！其实 dracut 还有很多功能，例如底下的几个参数也可以参考看看：
+--modules ：将 dracut 所提供的开机所需模块 (核心核模块) 加载，可用模块在底下的目录内/usr/lib/dracut/modules.d/
+--gzip|--bzip2|--xz：尝试使用哪一种压缩方式来进行 initramfs 压缩。预设使用 gzip 喔！
+--filesystems ：加入某些额外的文件系统支持！
+范例一：以 dracut 的默认功能建立一个 initramfs 虚拟磁盘文件
+dracut -v initramfs-test.img $(uname -r)
+加入 e1000e 网卡驱动与 ext4/nfs 文件系统在新的 initramfs 内
+dracut -v --add-drivers "e1000e" --filesystems "ext4 nfs"> initramfs-new.img $(uname -r)
+lsinitrd initramfs-new.img | grep -E '(e1000|ext4|nfs)'
+
+***测试与安装 grub2
+grub2-install [--boot-directory=DIR] INSTALL_DEVICE
+范例一：将 grub2 安装在目前系统的 MBR 底下，我的系统为 /dev/vda：
+grub2-install /dev/vda
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,21 @@
+variable in shell $variable
+
+no space before and after = 
+
+calculate needs like $($var1+$var2)
+
+sudo chmod 777
+
+comment: # or : '  '(space between : and ')
+
+
+$0: command name
+$1: first arg
+$#: last arg
+$@: all args except $0, $1,$2...$#
+
+
+condition1 && condition2: if condition 1 is true, execute condition 2
+
+condi1 || condi2: if condi1 is falsh, exexute condi2
+

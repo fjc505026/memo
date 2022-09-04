@@ -1,0 +1,192 @@
+****syntax:
+space  : will be omitted
+";"    : for sepreate commands
+/* */  : comment
+
+.text: code section
+.data: initilised data section
+.bss:  uninitilised data
+
+
+/*code start from 0x10000, data start from 0x8000000*/
+SECTIONS
+{
+  . = 0x10000;
+  .text : { *(.text) }
+  . = 0x8000000;
+  .data : { *(.data) }
+  .bss : { *(.bss) }
+}
+
+
+SECTION [ADDRESS] [(TYPE)] : [AT(LMA)]
+{
+  OUTPUT-SECTION-COMMAND
+  OUTPUT-SECTION-COMMAND
+  ...
+} [>REGION] [AT>LMA_REGION] [:PHDR :PHDR ...] [=FILLEXP]
+
+大多数输出节不使用这里的可选节属性.
+
+SECTION边上的空格是必须的, 所以节名是明确的. 冒号跟花括号也是必须的. 断行和其他的空格是可选的.
+
+如果你在连接脚本中不使用'SECTIONS'命令, 连接器会按在输入文件中遇到的节的顺序把每一个输入节放到同
+名的输出节中. 如果所有的输入节都在第一个文件中存在,那输出文件中的节的顺序会匹配第一个输入文件中
+的节的顺序. 第一个节会在地址零处
+
+
+每一个OUTPUT-SECTION-COMMAND可能是如下的情况:
+* 一个符号赋值.
+* 一个输入节描述.
+* 直接包含的数据值.
+* 一个特定的输出节关键字
+
+
+比如:.text . : { *(.text) }和.text : { *(.text) }
+
+有细微的不同. 第一个会把'.text'输出节的地址设为当前定位计数器的值. 第二个会把它设为定位计数器的
+当前值向上对齐到'.text'输入节中对齐要求最严格的一个边界
+
+ADDRESS可以是任意表达式; 比如,如果你需要把节对齐对0x10字节边界,这样就可以让低四字节的节地址值为
+零, 你可以这样做:
+.text ALIGN(0x10) : { *(.text) }
+
+(*(EXCLUDE_FILE (*crtend.o *otherfile.o) .ctors))
+除了`crtend.o'文件和`otherfile.o'文件之外的所有的文件中的所有的.ctors节被包含进来
+
+有两种方法包含多于一个的节:
+    *(.text .rdata)
+    *(.text) *(.rdata)
+
+在第一个例子中, 两种节会交替出现,并以连接器的输入顺序排布.
+在第二个例子中,所有的'.text'输入节会先出现,然后是所有的'.rdata'节.
+
+你可以指定文件名,以从一个特定的文件中包含(section)节  data.o(.data)
+
+通配符形式跟Unix Shell中使用的一样.
+
+`*' 匹配任意数量的字符.
+
+`?' 匹配单个字符.
+
+`[CHARS]' 匹配CHARS中的任意单个字符; 字符'-'可以被用来指定字符的方讧, 比如[a-z]匹配任意小字字符.
+
+`\' 转义其后的字符.
+
+ 'SORT(.text*)':当'SORT'关键字被使用时, 连接器会在把文件和节放到输出文件中之前按名字顺序重新排列它们.
+
+虚地址（VMA）和载入地址（LMA）：  跟在关键字‘AT’后面的表达式LMA指定节的载入地址。或者，通过`AT>LMA_REGION'表达式
+
+
+//set entry point
+ENTRY(SYMBOL)
+* `-e'入口命令行选项;
+
+* 连接脚本中的`ENTRY(SYMBOL)'命令;
+
+* 如果定义了start, 就使用start的值;
+
+* 如果存在,就使用'.text'节的首地址;
+
+* 地址`0'.
+
+*******include file, 相当于compile 时， -l 选项
+INCLUDE FILENAME
+INPUT(FILE, FILE)
+INPUT（-IFILE）->libFILE.a
+GROUP(FILE)  //similar to INPUT,serach a few times until the find the defined reference
+OUTPUT(FILENAME) //等效于 -o, 输出文件名
+SERACH_DIR(PATH) //增加搜索路径，相当于-L
+STARTUP（FILENAME）//相当于INPUT， 第一个被连接的文件
+
+
+*****output file format
+`OUTPUT_formAT(BFDNAME)'
+`OUTPUT_formAT(DEFAULT, BIG, LITTLE)'//-oformat BFDNAME, 
+              //defualt,-EB,-EL
+
+'TARGET(BDFNAME)'//读取输入文件时命名BFD格式, -b BFDNAME ,  如果使用了'TARGET'命令但`OUTPUT_formAT'没有指定, 最后的
+'TARGET'命令也被用来设置输出文件的格式.
+
+
+`ASSERT(EXP, MESSAGE)' //确保EXP不等于零,如果等于零, 连接器就会返回一个错误码退出,并打印出MESSAGE
+`EXTERN(SYMBOL SYMBOL ...)'//强制SYMBOL作为一个无定义的符号输入到输出文件中去，like -u 
+`FORCE_COMMON_ALLOCATION' //这个命令跟命令行选项'-d'具有相同的效果: 就算指定了一个可重定位的输出文件('-r'),也让'ld'
+                            为普通符号分配空间
+`INHIBIT_COMMON_ALLOCATION'
+这个命令跟命令行选项`--no-define-common'具有相同的效果: 就算是一个不可重位输出文件, 也让'ld'忽略为普通符号分配的空间
+
+`NOCROSSREFS(SECTION SECTION ...)'  //这个命令在遇到在某些特定的节之间引用的时候会产生一条错误信息
+	在某些特定的程序中, 特别是在使用覆盖技术的嵌入式系统中, 当一个节被载入内存时,另外一个节
+就不会在内存中. 任何在两个节之间的直接引用都会是一个错误. 比如, 如果节1中的代码调用了另
+一个节中的一个函数,这就会产生一个错误.
+
+	`NOCROSSREFS'命令带有一个输出节名字的列表. 如果'ld'遇到任何在这些节之间的交叉引用, 它就
+会报告一个错误,并返回一个非零退出码. 注意, `NOCROSSREFS'命令使用输出节名,而不是输入节名
+
+
+`OUTPUT_ARCH(BFDARCH)'
+指定一个特定的输出机器架构. 这个参数是BFD库中使用的一个名字. 你可以通过使用带有'-f'选项
+的'objdump'程序来查看一个目标文件的架构
+
+
+PROVIDE： 'PROVIDE'关键字可以被用来定义一个符号, 比如'etext', 这个
+定义只在它被引用到的时候有效,而在它被定义的时候无效.语法是 `PROVIDE(SYMBOL = EXPRESSION)'.
+
+
+'COMMON‘: 没有特定输入section， 输入文件中的普通符号会被放到输出文件的'.bss'节中。比如：
+  .bss { *(.bss) *(COMMON) }
+
+
+接下来的例子是一个完整的连接脚本。它告诉连接器去读取文件'all.o'中的所有节，并把它们放到输出节
+'outputa'的开始位置处， 该输出节是从位置'0x10000'处开始的。 从文件'foo.o'中来的所有节'.input1'
+在同一个输出节中紧密排列。 从文件'foo.o'中来的所有节'.input2'全部放入到输出节'outputb'中，后面
+跟上从'foo1.o'中来的节'.input1'。来自所有文件的所有余下的'.input1'和'.input2'节被写入到输出节
+'outputc'中。
+
+    SECTIONS {
+      outputa 0x10000 :
+        {
+        all.o
+        foo.o (.input1)
+        }
+      outputb :
+        {
+        foo.o (.input2)
+        foo1.o (.input1)
+        }
+      outputc :
+        {
+        *(.input1)
+        *(.input2)
+        }
+   
+
+‘BYTE’，‘SHORT’，‘LONG’‘QUAD’命令分别存储一个，两个，四个，八个字节,section 内部才有效
+比如，下面的命令会存入一字节的内容1,后面跟上四字节，其内容是符号'addr'的值。
+BYTE(1)
+LONG(addr)
+
+错误：SECTIONS { .text : { *(.text) } LONG(1) .data : { *(.data) } }
+正确：SECTIONS { .text : { *(.text) ; LONG(1) } .data : { *(.data) } }
+
+`CREATE_OBJECT_SYMBOLS'  这个命令告诉连接器为每一个输入文件创建一个符号。而符号的名字正好就是相关输入文件的名字、
+
+`CONSTRUCTORS'  当使用a.out目标文件格式进行连接的时候， 连接器使用一组不常用的结构以支持C++的全局构造函数和析构函数。当连接不支持专有节的目标文件格式时， 比如ECOFF和XCOFF，连接器会自动辩识C++
+全局构造函数和析构函数的名字。对于这些目标文件格式，‘CONSTRUCTORS’命令告诉连接器把构造函数信息放到‘CONSTRUCTORS’命令出现的那个输出节中。对于其它目标文件格式，‘CONSTRUCTORS’ 命令被忽略
+
+
+
+‘MEMORY’命令描述目标平台上内存块的位置与长度。你可以用它来描述哪些内存区域可以被连接器使用，
+哪些内存区域是要避免使用的。然后你就可以把节分配到特定的内存区域中。连接器会基于内存区域设置节
+的地址，对于太满的区域，会提示警告信息。连接器不会为了适应可用的区域而搅乱节
+
+
+
+
+
+
+
+
+
+

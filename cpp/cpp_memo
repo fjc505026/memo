@@ -1,0 +1,327 @@
+*************data type*****************
+
+//initialise a integer
+int age {31};// used for initialise a variable , if{}, initialise to zero
+int age (31.2);// inexplict assginment, will get 31, use { } or = for safe
+int age = 31;
+int array[3] {1,2,3};
+int array[] {1,2,3,4,5,6};
+
+short 2 bytes
+long  4 or 8 bytes
+
+float    4 bytes(size), precision(7bits) //0... after 8 bit, it will be junk data
+double   8 bytes,       15bits //highly recommendated
+long double     12, -
+
+std::cout<<std::setprecision(20);// control the precision from std::output
+std::cout<<std::noboolalpha; //normally, 1--> true, 0-->false
+std::cout<<std::boolalpha; //print out 'true' and 'false'
+
+//assgin input to variable
+std::cin >> var1;
+std::cin >> var1 >> var2; //varable terminal by space, string
+//to get whole line
+std:: getline(std::cin,full_name);
+
+auto: let complier auto detect the variable type
+
+
+************operation************************
+std::cout << std::right;
+std::cout << std::setfill('-');
+sdt::cout << std::setw(10);
+std::cout << std::internal; //sign is left justified, data is right justified
+std::cout << std::showpos;  //noshowpos, show or hide the + sign 
+std::cout << std::showbase; // show the base, 7171, 0xaf173, 023570
+std::cout << std::uppercase;
+std::cout << std::fixed;
+std::cout << std::scientific;
+std::cout << std::showpoint; //show trailing zeros for float or double variables
+std::cout.unsetf(std::ios::scientific | std::ios::fixed);
+.....<<std::flush;
+
+std::cout << "postive_init(dec)"<<std::dev<<postive_int<<std::endl;//hex, oct
+std::numeric_limits<short>::min(); //max(),lowest()
+
+
+************ other concept****
+
+int array[] {1,2,3,4,5,6}
+
+for(auto value:array){  //iterating all value in the array and store in value
+	std::cout << "value: " << value << std::endl;
+}
+
+std::size(array) //sizeof(array)/sizeof(array[0]),before C++17
+
+char msg[]={"Hello"}; //auto fill a '\0' at the end
+
+int* p_number {}; //will  initialise with nullptr， if 
+
+*************dynamic memory allocation******
+int *p_number {nullptr};
+p_number = new int;  // p_number = malloc(int);  apply for memory allocation from HEAP, will release it until free
+*p_number=77; 
+delete p_number; //like free();
+p_number = nullptr; // reset to NULL, after release the memeory, p_number change from a address (return to HEAP) to 0, for future check
+                    // whenever apply the dynamic memeory, need to check if it returns NULL, so reset to NULL after delete is key
+
+//dynammic initialise a pointer to a value
+int *p_number {new int {22}}; // new  int(23)
+
+1.check if it is NULL before use
+2.reset to NULL after delete
+3.for multiple pointers access, one master to new and delete the pointer, other slave pointers just derefernce the master pointer when it is valid  
+
+1:exception
+try{
+   int* p_array {new int[1000000]};
+}catch( std::exception& ex ){
+
+	std::cout<< "Cought exception: " << ex.what() << std::endl;
+}
+
+2: std::nothrow
+   	int* p_arrary { new(std::nothrow) int[1000000]};
+   	if (p_arrary == nullptr){
+    	std::cout<<"memory allocation faied"<<std::endl;  
+	}else{
+		std::cout<<"memory allocation succeeded"<<std::endl;
+	}
+
+***************memory leakage******************
+//***double allocation
+int *p_number {new int{67}};
+//p_number should delete and reset here
+
+int number {55};
+
+p_number = &number;// the origin p_number to 67 address is missing, but still in use
+
+//****pointer in local scope
+
+int main(int argc, char**argv)
+{
+	{
+		int* p_number {new int{57}};
+	}
+     // p_number disappear, memory with int{57} leaked
+
+}
+
+
+****************array dynamic allocations
+//initialise
+size_t size{10};
+
+double *p_salaries {new double[size]};
+int *p_students{ new (std::nothrow) int [size] };
+double *p_scores { new(std::nothrow) double[size]{1,2,3,4,5}};
+
+//release
+delete[] p_scores;
+p_scores=nullptr;
+...
+...
+//we can't use for loop iteration a dynamic arrary like 
+for(double temp: tempertures){
+   ...
+}
+//we can't use std::size() on dynamic array 
+
+
+*********references************
+int int_value {45};
+int& reference_to_int {int_value}; //alias
+const in& const_ref_age{age};// const_ref_age can't be modified.
+
+
+//compare to pointer:
+1. don't need to use *, directly to  use
+2. cann't be changed to refer to other variable, like const pointer, if reference_to_int = new_int, the new_int assgin to orginal varaiable(int_value)
+3.must be initialised at declaration
+
+double* const const_p_double_value {&double_value};
+const_p_double_value = &other_double_value; //ERROR, 
+
+
+
+******character lib*************8
+std::isalnum('C') // check if it is alphanumeric [0-9a-Z]
+std::isalpha('C')//[a-Z]
+std::isblank('C')//[' ']
+//islower, isupper.isdigit,tolower,toupper
+
+
+std::strlen("string1") //strlen to array or pointer to a const array are the same, but sizeof() are diff, araray is the array size, pointer is the how                        //many byte the pointer occupied
+std::strcmp(str1,str2) //postive if str1>str2
+std::strncmp(str1,str2,n)
+std::strchar(string,needle);//find 1st occurence of a char, return the pointer point to the occurence addr
+std::strrchr(string,needle); //find last occurence of a char
+
+
+*************string*********
+std::string planet {"Earth.Where the sky is blue"};
+std::string perfered_planet{planet}; //initiliase with existing string
+std::string message {"Hello there",5}; //iniialise a string "Hello"
+std::string message1 {"Hellow there",6,5}//inialise "there"
+std::string msg {4,'e'}; //"eeee"
+
+planet="new planet, where the sky is yellow"; //change string at run time
+
+
+**************pass by reference****************
+it acts like  type* const pointer //the value can change, but the pointer always point to a fixed addr
+
+void say_age(int& age){
+	++age;
+}
+
+int main(){
+	int age{23};//23
+	say_age(age);
+    std::cout << "age:" << age<<std::endl; //24
+
+}
+
+**************Lambda*******************
+[capture list](parameters)-->return type{
+   //function body
+};
+
+[](){
+
+}();//call noname function immediately
+
+auto func=[](){};
+func();
+
+auto variable=[](){return ...};
+
+[]: &variable //capture by referncen,working on original value
+    variable  //capture by value,  not change
+    =         //capture everything by value(copy), in/out variable diff address, not change
+    &         //capture everything by reference, in/out variable at the same address, will change
+
+
+
+********************function template*************
+template <typename T> 
+T maximum(T a, T b){
+	return (a>b)?a:b;
+}
+//Template specialization declaration
+template<>
+const char* maximum <const char*>(const char *a, const char *b);
+//implmentation
+template<>
+const char* maximum <const char*>(const char *, const char *b){
+	return (std::strcmp(a,b)>0)?a:b;
+}
+
+maximum<double>(c,d);//explicityly say we need double type
+
+//pass by reference
+template<typename T> const T& maximum (const T& a, const T& b){
+	return (a>b)?a:b;
+} 
+
+
+*****************Concepts*****************
+//place constrains on template type parameters
+1.
+template <typename T>
+requires std::integral<T> T add (T a, T b){
+	return a+b;
+}
+2. 
+template <typename T>
+T add (T a, T b) requires std::integral<T>{
+	return a+b;
+}
+3.
+template<std::integral T>
+T add(T a, T b){
+	return a+b;
+}
+4.
+auto add (std::integral auto a, std::integral auto b){
+	return a+b;	
+}
+
+
+***custom concepts
+template<typename T>
+concept MyIntegral = std::is_intergral_v <T>;
+
+template<typename T>
+concept Multipliable = requires(T a, Tb) {
+	a*b; // condition test code, ensure they can be mutiplied by each other, string will fail
+}
+
+template<typename T>
+concept Incrementable = requires(T a){
+	a+=1;
+    ++a;
+    a++;
+}
+
+//example code
+template<typename T>
+requires MyIntegral <T>
+T add_1 (T a, T b){
+	return a+b;
+}
+
+template <MyIntegral T>
+T add_2(T a,T b){
+	return a+b;
+}
+
+auto add_#(MyIntegral auto a, Myintegral auto b){
+	return a+b;
+}
+
+
+**************requires******************
+1.simple requirement
+template <typename T>
+concept TinyType = requries (T t){
+	sizeof(T) <=4; //force type T size only has less than or equal to 4 bytes	
+} // Tinytype in application means a type has size <4 byptes
+
+2.nested requirement
+template <typename T>
+concept TinyType = requries (T t){
+	sizeof(T) <=4; //force type T size only has less than or equal to 4 bytes
+	requires sizeof(T)<=4; //check if the expression is true;
+}   	
+
+3.compound requirement
+template <typename T>
+concept Addable = requries (T a, T b){
+     //noexcept is optional
+	{a+b} noexcept->std::convertiable_to<int>; //compound requirement
+	//check if a+b is valid, doesn't throw expetions(optional), and the result is convertiable to int(optional)
+}
+
+4. combining concepts
+template <typename T>
+concept TinyType = requires (T t){
+	sizeof(T)<=4;
+	requires sizeof(T)<=4;
+};
+
+template <typename T>
+//T func(T t) requires std::integral<T>||std::floating_point<T>
+T func(T t) requires std::integral<T>&& requires (T t){
+										sizeof(T)<=4;
+										requires sizeof(T)<=4;
+											}
+{
+	std::cout<<"value:"<<t<<std::endl;
+	return (2*t);
+}
+
+

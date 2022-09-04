@@ -1,0 +1,89 @@
+
+ifconfig
+eno1 ：代表由主板 BIOS 内建的网卡
+ens1 ：代表由主板 BIOS 内建的 PCI-E 界面的网卡
+enp2s0 ：代表 PCI-E 界面的独立网卡，可能有多个插孔，因此会有 s0, s1... 的编号～
+eth0 ：如果上述的名称都不适用，就回到原本的预设网卡编号
+
+**手动设定固定 IP
+IP
+子网掩码(netmask)
+网关(gateway)
+DNS 主机的 IP (通常会有两个，若记不住的话，硬背 168.95.1.1 即可)
+
+example:
+nmcli connection show// show name,uuid type,device(网卡名称)
+nmcli connection modify eth0  connection.autoconnect yes ipv4.method manual ipv4.addresses 172.16.1.1/16 \
+> ipv4.gateway 172.16.200.254 ipv4.dns 172.16.200.254
+nmcli connection up eth0
+nmcli connection show eth0
+
+**网络参数可自动取得 (dhcp 协议自动取得)
+常见于 IP 分享器后端的主机，或者是利用电视线路的网络
+nmcli connection modify eth0  connection.autoconnect yes ipv4.method auto
+nmcli connection up eth0
+nmcli connection show eth0
+
+**光纤和ADSL
+只要是透过光纤或宽带调制解调器『拨接上网』的，就是使用这种方式,系统最终会产生一个替代调制解调器的网络接口 (ppp0)
+
+
+*修改主机名
+hostnamectl [set-hostname 你的主机名]
+hostnamectl set-hostname www.centos.vbird
+cat /etc/hostname or hostnamectl 
+
+*日期与时间设定
+timedatectl [commamd]
+list-timezones ：列出系统上所有支持的时区名称
+set-timezone ：设定时区位置
+set-time ：设定时间
+set-ntp ：设定网络校时系统
+timedatectl set-time "2015-09-01 12:02"
+
+用 ntpdate 手动网络校时
+ntpdate tock.stdtime.gov.tw//台湾地区国家标准实验室提供的时间服务器
+hwclock -w  //的时间写入BIOS 时间记录
+
+*语言设定
+localectl //系统语系
+locale//当前这个软件的语系 , bash
+
+example:
+[root@study ~]# localectl set-locale LANG=en_US.utf8
+[root@study ~]# systemctl isolate multi-user.target
+[root@study ~]# systemctl isolate graphical.target
+
+*防火墙简易设定
+firewall-cmd 而这我们用GUI
+到『应用程序』-->『杂项』-->『防火墙』
+相关设定项目：
+服务：ssh, ftp，http,https, dhcpv6-client
+port: 配合服务使用
+rich rule:对于整个网域的设定,  firewall-cmd --permanent --add-rich-rule='rule family="ipv4"  source address="192.168.1.0/24" accept'
+			      firewall-cmd --reload
+interface:哪一个网卡
+
+
+**dmidecode 解析硬件配备
+dmidecode -t type
+选项与参数：
+详细的 type 项目请 man dmidecode 查询更多的数据，这里仅列出比较常用的项目：
+1 ：详细的系统数据，含主板的型号与硬件的基础数据等
+4 ：CPU 的相关资料，包括倍频、外频、核心数、核心绪数等
+9 ：系统的相关插槽格式，包括 PCI, PCI-E 等等的插槽规格说明
+17：每一个内存插槽的规格，若内有内存，则列出该内存的容量与型号
+
+运行时，kernel侦测设备在/proc
+一些linux硬件侦测指令
+gdisk：可以使用 gdisk -l 将分区表列出；
+dmesg：观察核心运作过程当中所显示的各项讯息记录；
+vmstat：可分析系统 (CPU/RAM/IO) 目前的状态；
+lspci：列出整个 PC 系统的 PCI 接口装置！很有用的指令； ***
+lsusb：列出目前系统上面各个 USB 端口口的状态，与连接的 USB 装置；
+iostat：与 vmstat 类似，可实时列出整个 CPU 与接口设备的 Input/Output 状态。
+
+备份 //TODO
+
+
+

@@ -1,0 +1,10 @@
+gcc
+
+-c compile only, generate object file, .c->.o
+-o set the output file name
+-g add debug info
+-O optimise
+-O2 optimise level2
+-E preprocess, expand marco define, ->.i
+-S compile to assemble file, ->.s
+

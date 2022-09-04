@@ -1,0 +1,27 @@
+常见的登录档档名
+/var/log/boot.log：存在本次开机启动的信息
+/var/log/cron：crontab 排程运行信息
+/var/log/dmesg：记录系统开机的时核心侦测过程所产生的各项信息
+/var/log/maillog 或 /var/log/mail/*：记录邮件的往来信息，其实主要是记录 postfix (SMTP 协议提供者) 与 dovecot (POP3 协议提供者) 所产生的讯息。 SMTP 是发信所使用的通讯协议， POP3 则是收信使用的通讯协议
+/var/log/messages：几乎记录所有系统发生的错误讯息 ****
+/var/log/secure：涉及到密码，login,ssh, telnet 
+/var/log/wtmp, /var/log/faillog：以记录正确登入系统者的帐户信息与错误登入时帐户信息
+/var/log/httpd/*, /var/log/samba/*：不同的网络服务记录的信息
+
+为登录文档提供功能的服务(linux 系统提供，不是软件的)：
+systemd-journald.service：最主要的讯息收受者，由 systemd 提供的；
+rsyslog.service：主要登录系统与网络等服务的讯息；  （其daemon配置文件：/etc/rsyslog.conf,(1)什么服务 (2)的什么等级讯息 (3)需要被记录在哪里(装置或文件)）
+logrotate：主要在进行登录文件的轮替功能。
+
+查看/etc/rsyslog.conf 
+
+
+mail.info /var/log/maillog //mail>=info 相关数据写入
+news.*;cron.* /var/log/cronnews // news和 cron所有数据写入
+news.=warn;cron.=warn /var/log/cronnews.warn//new和cron==warn数据写入
+*.*;news,cron,mail.none /var/log/messages  //所有信息写入messages except news, cron, mail
+
+
+使用 journalctl观察systemd-journald.service 的数据
+
+数据储存到登录文件 logger [-p 服务名称.等级] "讯息" // logger -p user.info "I will check logger command"

@@ -1,0 +1,77 @@
+
+main.c include input.h and calcu.h
+
+#####old  way:
+1.gcc main.c calcu.c input.c -o main
+
+2. gcc -c main.c / gcc -c calcu.c/ gcc -c input.c
+   gcc main.o calcu.o input.o -o main
+
+#####Make (make, make clean)
+main: main.o input.o calcu.o
+	gcc -o main main.o input.o calcu.o
+main.o: main.c
+	gcc -c main.c
+calcu.o: calcu.c
+	gcc -c calcu.c
+input.o: input.c
+	gcc -c input.c
+
+clean:
+	rm *.o
+	rm main
+
+name=jfan
+curname=$(name)
+name=jingchen fan
+print:
+	@echo curname:$(curname)
+# @ is to avoid print the echo command itself
+# make print: curname jingchen fan,  
+# '=' :show the last update value of that variable, 
+# ':=' : real assign
+# '?=': if no value, assign the vale
+# '+=': append
+
+
+###Rule
+target: the files rely on
+	commmand1(start with Tab)
+	command2
+sub_target(file rely on): the sub_file rely on
+	commmand
+###variable (string)
+objects=main.o input.o calcu.o
+main:$(object)
+##template rule:
+a.%.c : abc, ad1c, amc  a(any len char without empty)c
+%.o:%.c:
+$@:  the set of target
+$<:	 the first file to rely on, if use %, then means all of them
+$^:  the set of all files rely on
+$%:  if target is lib func, the member in target, otherwise is empty
+$?:  the set of any file newer than target
+$+:  same as $^, keep duplicate file
+$*:  the part before '%', e.g: test/a.test.c and use template a.%.c, then %* is test/a.test 
+
+main.o: main.c           -->    %o:%.c
+	gcc -c main.c                    gcc -c %<
+calcu.o: calcu.c
+	gcc -c calcu.c
+input.o: input.c
+	gcc -c input.c
+
+###Final version
+object=main.o input.o calcu.o
+main: $(object)
+	gcc -o main %(object)
+%o:%c
+	gcc -c %<
+.PHONY:clean # claim fake target, avoid have a file name "clean" in this directory
+clean:
+	rm *.o
+	rm main
+
+
+
+

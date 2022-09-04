@@ -1,0 +1,8 @@
+dd: delete current line;  ndd: delete the next n line (include current)
+u: retreat current step
+.: repeat previous step
+yy: copy current line;   nyy:  copy the next n line (include current line)
+p: paste to next line;  P:paste to the above line
+
+
+change vim setting in:/etc/vim/vimrc

@@ -1,0 +1,76 @@
+######################format disk#
+
+find device in /dev:     ls /dev/sd*
+
+check mounting point:    df
+
+umount the mounting point: sudo umount /media/jfan/0403-0201
+
+enter into /media/jfan and mkdir udisk
+
+mount to the new created file (support Chinese lan):  sudo mount (-o iocharset=utf8) /dev/sdb1 /media/jfan/udisk/  
+
+check disk info in dev:  sudo fdisk -l
+
+enter into disk CLI: sudo fdisk /dev/sdb
+m,p,d,w,p
+
+umount the mounting point: sudo umount /media/jfan/udisk/
+check if sd1 is disappear: ls sd* in /dev
+
+enter into disk CLI: sudo fdisk /dev/sdb
+n,p,1,2048,2099200(1G)
+n,p,2,2101248,4198400(1G)
+n,p,3,\r,\r(what ever left)
+w
+
+check if create three sectors successful:   ls /dev/sd*     sudo fdisk -l /dev/
+
+format the file sys to sectors: sudo mkfs -t vfat /dev/sdb1
+
+
+######################compress command
+compress to .gz file: gzip
+decompress :   gzip -d  ***.gz
+compress all file in folder: gzip -r (folder)
+decompress all files in folder: gzip -rd (folder)
+
+compress to .bz2 file: bzip2 -z
+decompress : bzip2 -d
+
+
+tar 
+  tar -cf archive.tar foo bar  # Create archive.tar from files foo and bar.  -vcjf   -vczf
+  tar -tvf archive.tar         # List all files in archive.tar verbosely.
+  tar -xf archive.tar          # Extract all files from archive.tar.   -vxjf  *.bz2  -vxzf  *.gz
+-c, --create               create a new archive,
+-f, --file=ARCHIVE         use archive file or device ARCHIVE 
+-j, --bzip2                filter the archive through bzip
+-z, --gzip, --gunzip, --ungzip   filter the archive through gzip
+-x, --extract, --get       extract files from an archive
+-v, --verbose              verbosely list files processed
+
+rar
+zip/unzip
+
+
+
+####add user group
+check by command:  /etc/passwd  /etc/shadow    /etc/group
+sudo apt-get install gnome-system-tools
+adduser, finger(serach for user ),passwd, deluser
+addgroup, groups, delgroup
+
+
+
+####user privilege (ls -l)
+device type: c: char b:block 
+user /user group/other users  r:4 w:2 s:1
+chmod
+chown  (user).(user group)  file (-r folder)
+
+
+
+
+
+

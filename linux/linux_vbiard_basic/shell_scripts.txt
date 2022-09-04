@@ -1,0 +1,83 @@
+1. 指令的执行是从上而下、从左而右的分析与执行；
+2. 指令的下达就如同第四章内提到的： 指令、选项与参数间的多个空白都会被忽略掉；
+3. 空白行也将被忽略掉，并且 [tab] 按键所推开的空白同样视为空格键；
+4. 如果读取到一个 Enter 符号 (CR) ，就尝试开始执行该行 (或该串) 命令；
+5. 至于如果一行的内容太多，则可以使用『 \[Enter] 』来延伸至下一行；
+6. 『 # 』可做为批注！任何加在 # 后面的资料将全部被视为批注文字而被忽略！
+
+
+1.#!/bin/bash 表示script 使用的 shell 名称，否则是哪个shell：加载 bash 的相关环境配置文件 (一般来说就是 non-login shell 的~/.bashrc)，
+2.程序内容的说明： #注释
+3.主要环境变量的宣告： PATH 与 LANG (如果有使用到输出相关的信息时) 是当中最重要的！
+4.主要程序部分 
+5.执行成果告知 (定义回传值)  $? 
+
+
+
+$((计算式)) ：来进行数值运算的
+var=$((运算内容))   //echo $(( 13 % 3 ))
+
+算含有小数点的数据时: bc  // echo "123.123*55.9" | bc
+
+
+直接执行script (相对，绝对路径，环境变量)：  该script 是在子程序的 bash, script变量为局部
+source 来执行脚本：在父程序中执行,script变量为全局  //不注销系统而要让某些写入 ~/.bashrc 的设定生效时，需要使用『 source ~/.bashrc 』
+
+*****判断式
+***
+test -e /dmtsai
+test -e /dmtsai && echo "exist" || echo "Not exist"
+文件类型 判断：
+-e 是否存在？(常用)
+-f 是否存在且为文件(file)？(常用)
+-d 是否存在且为目录(directory)？(常用)
+-b 是否存在且为一个 block device 装置？
+-c 是否存在且为一个 character device 装置？
+-S 是否存在且为一个 Socket 文件？
+-p 是否存在且为一个 FIFO (pipe) 文件？
+-L 是否存在且为一个连结档？
+权限侦测，判断：
+-r 侦测该档名是否存在且具有『可读』的权限？
+-w 侦测该档名是否存在且具有『可写』的权限？
+-x 侦测该档名是否存在且具有『可执行』的权限？
+-u 侦测该文件名是否存在且具有『SUID』的属性？
+-g 侦测该文件名是否存在且具有『SGID』的属性？
+-k 侦测该文件名是否存在且具有『Sticky bit』的属性？
+-s 侦测该档名是否存在且为『非空白文件』？
+文件之间的比较： test file1 -nt file2
+-nt (newer than)判断 file1 是否比 file2 新
+-ot (older than)判断 file1 是否比 file2 旧
+-ef 判断 file1 与 file2 是否为同一文件，可用在判断 hard link 的判定上。 主要意义在判定，两个文件是否均指向同一个 inode 哩！
+于两个整数之间的判定
+-eq 两数值相等 (equal)
+-ne 两数值不等 (not equal)
+-gt n1 大于 n2 (greater than)
+-lt n1 小于 n2 (less than)
+-ge n1 大于等于 n2 (greater than or equal)
+-le n1 小于等于 n2 (less than or equal)
+test -z string 判定字符串是否为 0 ？若 string 为空字符串，则为 true
+test -n string 判定字符串是否非为 0 ？若 string 为空字符串，则为 false。 注： -n 亦可省略
+test str1 == str2 判定 str1 是否等于 str2 ，若相等，则回传 true
+test str1 != str2 判定 str1 是否不等于 str2 ，若相等，则回传 false
+
+其他： -a: and, -o: or, ! : not
+
+***
+利用判断符号 [ ]: shell 的判断式 [_express1_==_express2_]前后要有空格 // [ ${name} == "VBird" ]
+
+[ -z "${HOME}" ] ; echo $?  //${HOME} 这个变量是否为空
+e.g
+read -p "Please input (Y/N): " yn
+[ "${yn}" == "Y" -o "${yn}" == "y" ] && echo "OK, continue" && exit 0
+[ "${yn}" == "N" -o "${yn}" == "n" ] && echo "Oh, interrupt!" && exit 0
+
+$# ：代表后接的参数『个数』，以上表为例这里显示为『 4 』；
+$@ ：代表『 "$1" "$2" "$3" "$4" 』之意，每个变量是独立的(用双引号括起来)；
+$* ：代表『 "$1c$2c$3c$4" 』，其中 c 为分隔字符，默认为空格键， 所以本例中代表『 "$1 $2 $3 $4" 』之意
+
+shift 会移动变量，而且 shift 后面可以接数字，代表拿掉最前面的几个参数的意思。
+第一次进行 shift 后他的显示情况是『 one two three four five six』，所以就剩下五个啦！第二次直接拿掉三个，就变成『 two three four five six 』啦
+
+
+
+

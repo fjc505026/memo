@@ -1,0 +1,105 @@
+自制核心 - 核心编译:source code-->用Tarball 安装方式编译
+驱动程序开发：属于硬件发展厂商
+
+Linux 核心特色：Kernel 可以随时、随各人喜好而更动
+The purpose of re-compiling kernel:
+1.For new function.
+2.Current kernel is too much redundancy
+3.improve the HW stablity, the most of original Linux Kernel were develeped for Intel, could be require to re-complie for AMD
+4.Embedded system development
+
+核心的主要工作是在控制硬件！先了解硬件，只需编译未来功能
+
+linux kernel website: linux-3.10.89.tar.xz 
+tar -Jxvf linux-3.10.89.tar.xz -C /usr/src/kernels/
+
+*arch ：与硬件平台有关的项目，大部分指的是 CPU 的类别，例如 x86, x86_64, Xen 虚拟支持等；
+*block ：与成组设备较相关的设定数据，区块数据通常指的是大量储存媒体！还包括类似 ext3 等文件系统的支持是否允许等。
+*crypto ：核心所支持的加密的技术，例如 md5 或者是 des 等等；
+*Documentation ：与核心有关的一堆说明文件，若对核心有极大的兴趣，要瞧瞧这里！
+*drivers ：一些硬件的驱动程序，例如显示适配器、网络卡、PCI 相关硬件等等；
+*firmware ：一些旧式硬件的微脚本 (韧体) 数据；
+*fs ：核心所支持的 filesystems ，例如 vfat, reiserfs, nfs 等等；
+*include ：一些可让其他过程调用的标头 (header) 定义数据；
+*init ：一些核心初始化的定义功能，包括挂载与 init 程序的呼叫等；
+*ipc ：定义 Linux 操作系统内各程序的沟通；
+*kernel ：定义核心的程序、核心状态、线程、程序的排程 (schedule)、程序的讯号 (signle) 等
+*lib ：一些函式库；
+*mm ：与内存单元有关的各项数据，包括 swap 与虚拟内存等；
+*net ：与网络有关的各项协议数据，还有防火墙模块 (net/ipv4/netfilter/*) 等等；
+*security ：包括 selinux 等在内的安全性设定；
+*sound ：与音效有关的各项模块；
+*virt ：与虚拟化机器有关的信息，目前核心支持的是 KVM (Kernel base Virtual Machine)
+
+****核心编译的前处理与核心功能选择  --挑选你想要的功能
+
+cd /usr/src/kernels/linux-3.10.89/
+make mrproper //首次编译 ，删除核心功能选择（配置）文件 删除 .config
+make clean   //其余次编译， clean object file
+
+****开始挑选核心功能： make XXconfig
+/boot/config-xxx, 最后会产生/usr/src/kernels/linux-3.10.89/.config
+make menuconfig ：最常使用的，是文本模式底下可以显示类似图形接口
+make oldconfig 使用已存在的 ./.config 文件设定值为默认值，只将新版本核心内的新功能选项列出让用户选择，
+make xconfig QT GUI
+make gconfig GTK GUI
+make config  每个项目都以条列式一条一条的列出让你选择
+
+exmaple:
+[root@study linux-3.10.89]#cp /boot/config-3.10.0-229.11.1.el7.x86_64 .config
+ make menuconfig
+『肯定』核心一定要的功能，直接编译进核心内；
+『可能在未来会用到』的功能，那么尽量编译成为模块；
+『不知道那个东西要干嘛的，看 help 也看不懂』的话，那么就保留默认值，或者将他编译成为模块；
+
+
+General setup :与 Linux 最相关的程序互动、核心版本说明、是否使用发展中程序代码等信息都在这里设定的,基本上，保留默认值即可！ 
+loadable module + block layer
+CPU 的类型与功能选择(Processor type and features)
+电源管理功能(Power management and ACPI options):
+总线选项：『Bus options (PCI etc.) PCI 与 PCI-express 的支持，还有笔记本电脑常见的 PCMCIA 插卡
+编译后执行档的格式(Executable file formats / Emulations)
+核心的网络功能(『Networking support):由于防火墙是在启动网络之后再设定即可，所以绝大部分的内容都可以被编译成为模块，而且也建议你编成模块
+各项装置的驱动程序
+文件系统的支援
+Kernel hacking:核心黑客、信息安全、密码应用
+虚拟化与函式库KVM (Kernel base Virtual Machine
+
+[root@study linux-3.10.89]# make vmlinux <==未经压缩的核心
+[root@study linux-3.10.89]# make modules <==仅核心模块
+[root@study linux-3.10.89]# make bzImage <==经压缩过的核心(预设)
+[root@study linux-3.10.89]# make all <==进行上述的三个动作
+
+[root@study linux-3.10.89]# make -j 4 clean <==先清除暂存档
+[root@study linux-3.10.89]# make -j 4 bzImage <==先编译核心
+[root@study linux-3.10.89]# make -j 4 modules <==再编译模块
+[root@study linux-3.10.89]# make -j 4 clean bzImage modules <==连续动作！
+
+最后制作出来的数据是被放置在 /usr/src/kernels/linux-3.10.89/
+
+***实际安装模块
+make modules_install
+ll /lib/modules/
+
+*****开始安装新核心与多重核心选单 (grub)
+[root@study linux-3.10.89]# cp arch/x86/boot/bzImage /boot/vmlinuz-3.10.89vbird <==实际核心
+[root@study linux-3.10.89]# cp .config /boot/config-3.10.89vbird <==建议配置文件也复制备份
+[root@study linux-3.10.89]# chmod a+x /boot/vmlinuz-3.10.89vbird
+[root@study linux-3.10.89]# cp System.map /boot/System.map-3.10.89vbird
+[root@study linux-3.10.89]# gzip -c Module.symvers > /boot/symvers-3.10.89vbird.gz
+[root@study linux-3.10.89]# restorecon -Rv /boot
+
+建立相对应的 Initial Ram Disk (initrd)
+[root@study ~]# dracut -v /boot/initramfs-3.10.89vbird.img 3.10.89vbird
+
+编辑开机选单 (grub)
+grub2-mkconfig -o /boot/grub2/grub.cfg
+
+****驱动编译：
+核心模块：/lib/modules/$(uname -r)/kernel/
+硬件驱动：/lib/modules/$(uname -r)/kernel/drivers/
+
+
+/lib/modules/$(uname -r)/下的build和source都是连接到 /usr/src/kernels/linux-3.10.89
+
+

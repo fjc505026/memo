@@ -1,0 +1,28 @@
+
+
+*mqtt_send_report (mqtt.c line:33)
+	mqtt_connect(); //if not connected
+	mqtt_subscribe(); //if it is new session
+	mqtt_receive();// if old session
+	mqtt_publish();
+	mqtt_disconnect();
+
+*mqtt_connect()	(mqtt.c line:87)
+	MQTTserialize_connect();
+		MQTTPacket_len();
+		MQTTSerialize_connectLength();
+	
+	MQTTPacket_read();//check connack
+	MQTTDeserialize_connack()//parse connack
+
+*mqtt_subsribe() (mqtt.c line:207)
+	MQTTSerialize_subscribe();
+	MQTTPacket_read();
+	MQTTDeserialize_suback();
+
+*mqtt_publish();
+	MQTTSerialize_publish();
+	MQTTPacket_read();
+
+mqtt_disconnect()
+	MQTTSerialize_disconnect();

@@ -1,0 +1,227 @@
+Bourne Again SHell (简称 bash)，这个 Shell 是 Bourne Shell 的增强版
+/etc/shells：
+	/bin/sh (已经被 /bin/bash 所取代)
+	/bin/bash (就是 Linux 预设的 shell)
+	/bin/tcsh (整合 C Shell ，提供更多的功能)
+	/bin/csh (已经被 /bin/tcsh 所取代)
+
+查看使用者预设的shell:
+cat /etc/passwd
+
+bash shell history: ~./bash_history, 用户注销后写入，否则先暂入内存
+tab  补齐
+命令别名设定功能： (alias) ： alias lm='ls -al'
+
+显示出 cmd 是外部指令还是 bash 内建指令:
+type [-tpa] cmd
+-t ：当加入 -t 参数时，type 会将 name 以底下这些字眼显示出他的意义：
+ 	file ：表示为外部指令；
+ 	alias ：表示该指令为命令别名所设定的名称；
+ 	builtin ：表示该指令为 bash 内建的指令功能；
+-p ：如果后面接的 name 为外部指令时，才会显示完整文件名；
+-a ：会由 PATH 变量定义的路径中，将所有含 name 的指令都列出来，包含 alias
+
+\CR  跳脱
+[ctrl]+u/[ctrl]+k 光标处向前删除指令串 ([ctrl]+u) 及向后删除指令串 ([ctrl]+k)。
+[ctrl]+a/[ctrl]+e 让光标移动到整个指令串的最前面 ([ctrl]+a) 或最后面 ([ctrl]+e)。
+
+
+****变量的设定规则
+变量类型默认为『字符串』，所以若不指定变量类型，则 1+2 为一个『字符串』而不是『计算式』, 用declare to cast
+数值运算，预设最多仅能到达整数形态，所以 1/3 结果是 0；
+1.Variable=Content, asssign value, no space, Variable can't start with number
+2. if has space, need to use "" or '', " "可以包含引用的变量， ' '则是纯文本
+3 use \  for escape, like myname=Vbirad\ Tsai
+4 一串指令中引用指令， ` `or $( ), e.g version=$(uname -r)
+5."$var"content ("${var}"content) to add content, e.g PATH="$PATH":/home/bin
+6. export 来使变量变成环境变量, (导入其他程序)使其可以用于其他子程序。 export PATH
+7. 大写: 系统默认变量   小写: 自行设定变量
+8. 取消变量的方法为使用 unset
+
+**修改较长目录为环境变量
+work="/cluster/server/work/taiwan_2015/003/"
+cd $work
+把路径定义为work在 ~/.bashrc
+
+**查看环境变量
+env
+PATH: 就是执行文件搜寻的路径啦～目录与目录中间以冒号(:)分隔，由于文件的搜寻是依序由 PATH 的变量内的目录来查询，所以，目录的顺序也是重要的喔。
+
+**观察所有变量 (含环境变量与自定义变量)
+set 
+PS1='[\u@\h \W]\$ ' :这个是命令提示字格式  [dmtsai@study home]$
+$ 当前shell的PID
+? 上个cmd的return code     e.g  echo $?
+
+**自定义变量VS环境变量
+子程序仅会继承父程序的环境变量， 子程序不会继承父程序的自定义变量, 所以要export, 分享自己的变量成为环境变量
+
+**语系变量 (locale) -a 查询支持语系  有设定 LANG 或者是 LC_ALL 时，则其他的语系变量就会被这两个变量所取代！ 
+/etc/locale.conf 
+export LC_ALL=en_US.utf8; locale 
+
+
+****变量键盘读取、数组与宣告： read, array, declare
+read [-pt] variable
+选项与参数：
+-p ：后面可以接提示字符！
+-t ：后面可以接等待的『秒数！』这个比较有趣～不会一直等待使用者啦！ 
+e.g  read -p "Please keyin your name: " -t 30 named
+
+declare [-aixr] variable
+选项与参数：
+-a ：将后面名为 variable 的变量定义成为数组 (array) 类型
+-i ：将后面名为 variable 的变量定义成为整数数字 (integer) 类型
+-x ：用法与 export 一样，就是将后面的 variable 变成环境变量；   (+x)为取消
+-r ：将变量设定成为 readonly 类型，该变量不可被更改内容，也不能 unset
+-p: 单独列出变量类型
+
+
+****变量内容的删除与取代
+假设我不喜欢 local/bin，所以要将前 1 个目录删除掉，如何显示？
+echo ${path#/*local/bin:}
+${}： 种删除模式所必须存在
+path: 原本的变量名称
+#:从变量内容的最前面开始向右删除，且仅删除最短的那个，最短匹配    ##：变成『删除掉最长的那个数据』， 最长匹配
+%：与#相反，从最后向前删除，最短匹配   %%：最后向前删除，最长匹配
+/old/new e.g replace sbin by SBIN: echo ${path/sbin/SBIN}, //old/new, replace all
+/*local/bin: 删除模式匹配
+
+*****变量内容的测试与内容替换
+                  str非空     str 为‘ ’   str not set(NULL)                          0 or null
+var=${str-expr}   var=$str    var=	 var=expr	//var = ($str==NULL)?expr:($str?$str:'') 
+var=${str:-expr}  var=$str    var=expr   var=expr	//var = $str?$str:expr
+var=${str+expr}，  var=expr   var=expr	 var=	        //var = ($str==NULL)?'':expr
+var=${str:+expr}， var=expr   var=	 var=	        //var = $str?expr:'' 
+var=${str=expr},  str 不变，var=$str
+var=${str:=expr}  str 不变，var=$str
+var=${str?expr}   var=$str
+var=${str:?expr}  var=$str
+
+
+
+**** bash 的进站与欢迎讯息： /etc/issue, /etc/motd (使用者登入后取得一些讯息)    /etc/issue.net for telnet
+\S
+Kernel \r on an \m
+
+\d 本地端时间的日期；
+\l 显示第几个终端机接口；
+\m 显示硬件的等级 (i386/i486/i586/i686...)；
+\n 显示主机的网络名称；
+\O 显示 domain name；
+\r 操作系统的版本 (相当于 uname -r)
+\t 显示本地端时间的时间；
+\S 操作系统的名称；
+\v 操作系统的版本。
+
+
+login shell :  1. /etc/profile：这是系统整体的设定  2. ~/.bash_profile 或 ~/.bash_login 或 ~/.profile：属于使用者个人设定 只读一个
+
+source 配置文件档名 :读入目前的 bash 环境中
+e.g：将家目录的 ~/.bashrc 的设定读入目前的 bash 环境中
+source ~/.bashrc <==底下这两个指令是一样的！
+. ~/.bash
+
+
+~/.bashrc (non-login shell 会读)
+
+stty -a 终端机的输入按键代表意义
+
+
+
+0. 标准输入 (stdin) ：代码为 0 ，使用 < 或 << ；
+<:将原本需要由键盘输入的数据，改由文件内容来取代     cat > catfile < ~/.bashrc, stdin 取代键盘的输入以建立新文件的简单流程 
+<<结束的输入字符                                  cat > catfile << "eof", cat 直接将输入的讯息输出到 catfile 中， 且当由键盘输入 eof 时，该次输入就结束
+
+1. 标准输出 (stdout)：代码为 1 ，使用 > 或 >> ；
+1> ：以覆盖的方法将『正确的数据』输出到指定的文件或装置上；
+1>>：以累加的方法将『正确的数据』输出到指定的文件或装置上；
+
+2. 标准错误输出(stderr)：代码为 2 ，使用 2> 或 2>> ；
+2> ：以覆盖的方法将『错误的数据』输出到指定的文件或装置上；
+2>>：以累加的方法将『错误的数据』输出到指定的文件或装置上；
+
+
+***/dev/null 垃圾桶黑洞装置与特殊写法
+2>&1  &> ！ 写入同一个文件 ,来将 2> 转到 1> 去
+find /home -name .bashrc > list 2>&1 <==正确
+find /home -name .bashrc &> list <==正确
+
+
+我不清楚 /tmp/abc 是否存在，但就是要建立 /tmp/abc/hehe 文件
+ls /tmp/abc || mkdir /tmp/abc && touch /tmp/abc/hehe
+1.  不存在$？!=0， 建立folder，$?==0 , 建立文件   
+2.  存在 &？==0，不运行，因为之前$?==0,继续运行，建立文件
+
+command1 && command2 || command3   顺序不可错，TRUE 则cmd2,false 则 cmd3
+
+
+管线命令『 | 』仅能处理经由前面一个指令传来的正确信息，也就是 standard output 的信息，对于stdandard error 并没有直接处理的能力 (Tips:2>&1 )
+*****cut, grep
+cut -d'分隔字符' -f fields <==用于有特定分隔字符， 可以 -f 3,5则是按照隔离符后第3和5 field
+cut -c 字符区间 <==用于排列整齐的讯息
+选项与参数：
+-d ：后面接分隔字符。与 -f 一起使用；
+-f ：依据 -d 的分隔字符将一段讯息分区成为数段，用 -f 取出第几段的意思；
+-c ：以字符 (characters) 的单位取出固定字符区间；       -c 12-  第12column 之后
+
+grep [-acinv] [--color=auto] '搜寻字符串' filename
+选项与参数：
+-a ：将 binary 文件以 text 文件的方式搜寻数据
+-c ：计算找到 '搜寻字符串' 的次数
+-i ：忽略大小写的不同，所以大小写视为相同
+-n ：顺便输出行号
+-v ：反向选择，亦即显示出没有 '搜寻字符串' 内容的那一行！
+-A ：后面可加数字，为 after 的意思，除了列出该行外，后续的 n 行也列出来；
+-B ：后面可加数字，为 before 的意思，除了列出该行外，前面的 n 行也列出来；
+--color=auto ：可以将找到的关键词部分加上颜色的显示喔！
+
+*****排序命令： sort, wc (有多少相关字、行、字符数), uniq (重复的行删除掉)
+
+****双向重导向： tee, 重导向给Screen 和file
+tee [-a] file
+-a ：以累加 (append) 的方式，将数据加入 file 当中！
+
+last | tee last.list | cut -d " " -f1  :将 last 的输出存一份到 last.list 文件中；
+
+字符转换命令： tr, col, join, paste, expand
+
+tr [-ds] SET1 ...
+-d ：删除讯息当中的 SET1 这个字符串；
+-s ：取代掉重复的字符！
+将 last 输出的讯息中，所有的小写变成大写字符： last | tr '[a-z]' '[A-Z]'
+将 /etc/passwd 输出的讯息中，将冒号 (:) 删除: cat /etc/passwd | tr -d ':'
+
+col ([tab] 按键取代成为空格键)
+
+join [-ti12] file1 file2
+-t ：join 默认以空格符分隔数据，并且比对『第一个字段』的数据，如果两个文件相同，则将两笔数据联成一行，且第一个字段放在第一个！
+-i ：忽略大小写的差异；
+-1 ：这个是数字的 1 ，代表『第一个文件要用那个字段来分析』的意思；
+-2 ：代表『第二个文件要用那个字段来分析』的意思。
+
+paste [-d] file1 file2
+-d ：后面可以接分隔字符。预设是以 [tab] 来分隔的！
+- ：如果 file 部分写成 - ，表示来自 standard input 的资料的意思。
+
+expand ([tab] 按键转成空格键啦)
+
+****文件分区
+split [-bl] file PREFIX
+-b ：后面可接欲分区成的文件大小，可加单位，例如 b, k, m 等；
+-l ：以行数来进行分区。
+PREFIX ：代表前导符的意思，可作为分区文件的前导文字， 分开后编程PREFIXaa,PREFIXab ..
+
+参数代换： xargs :很多指令其实并不支持管线命令，因此我们可以透过 xargs 来提供该指令引用 standard input 之用！
+ xargs [-0epn] command
+-0 ：如果输入的 stdin 含有特殊字符，例如 `, \, 空格键等等字符时，这个 -0 参数可以将他还原成一般字符。这个参数可以用于特殊状态喔！
+-e ：这个是 EOF (end of file) 的意思。后面可以接一个字符串，当 xargs 分析到这个字符串时，就会停止继续工作！
+-p ：在执行每个指令的 argument 时，都会询问使用者的意思；
+-n ：后面接次数，每次 command 指令执行时，要使用几个参数的意思。
+当 xargs 后面没有接任何的指令时，默认是以 echo 来进行输出喔！
+
+cut -d ':' -f 1 /etc/passwd | head -n 3 | xargs -n 1 id # 透过 -n 来处理，一次给予一个参数，因此上述的结果就 OK 正常的显示啰！
+
+减号 - 的用途 : stdin 与 stdout 可以利用减号 "-" 
+tar -cvf - /home | tar -xvf - -C /tmp/homeback
+打包的数据传送到 stdout

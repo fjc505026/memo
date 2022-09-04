@@ -1,0 +1,64 @@
+1.****GIT configuration******
+git config --global user.name "Jingchen Fan"           //global, "" required if has space
+git config --global user.email 023851jesse@gmail.com
+git config --global core.editor "code --wait"         //set default editor
+git config --global -e 								  //open default editor to configure
+git config --global core.autocrlf input // input->linux (\n), true->windows(\c\n)
+git config --help //full help page, -h->short version
+
+
+2.**** commit command********
+git init //initilise a git repository in current directory. all info store in .git
+git add file1 file2 // add current change to staging area, git add . -> add all
+git commit -m "initial commit" // commit to repo with message , -a->commit with skipping the staging area
+git commit --amend // modify last commit message
+git status //check current info include branch and track info, -s->for short version
+git ls-files //list files in staging area
+git rm file2.txt //remove the files both from staging area and repo
+
+
+3.**** check history*****
+git log //--oneline->short version, --reverse, -p (file)->check difference on file 
+git show d601b90(commit id) // HEAD~1->1 step back from head   :->see content in specific file
+git ls-tree HEAD~1 //show all file changed in HEAD~1
+
+git reflog //check current repo log, all logs. Unlike "git log",which can only check the steps before current HEAD
+
+
+
+4.**** ignore files ********
+.gitignore //if already tracking the file before, we need git rm --cached files_need_ignore, -r ->for directory
+
+
+5.**** compare************
+git diff --staged//compare file in staging area and repo
+git diff //compare file in staging area and current working place
+
+6.**** restore******
+git restore --staged file //unstage files
+git restore . 
+git clean -fd//discard local change
+
+git restore --source=HEAD~1 file //restore file from pervious version
+
+7.**** reset **************
+git reset --hard COMMIT_ID //HEAD, stage and work tree roll back to COMMID_ID
+
+git rebase -i HEAD~2 // merge latest two commit as one commit, pick->fixup
+
+8.**** branches****************
+git branch //check branch list
+git checkout -b //new a branch and switch to it, equal to git branch new_branch, git checkout new_branch
+git checkout branches //checkout to different branch
+git checkout - //check previous branch
+git checkout -b feature-D origin/feature-D //create a local branch feature-D, pull from origin/feature-D 
+
+git merge --no-ff feature-A //keep feature-A merge in  historical record 
+
+
+9.**** remote repository**************
+git remote add origin git@github.com:github-book/git-tutorial.git //set remote repo
+git remote add upstream git://github.com/octocat/Spoon-Knife.git //add upstream repo, equal a remote repo but in local
+git fetch upstream  //fetch latest code from upstream repo, merge after
+git push -u origin master //push current branch to origin master, -u->upstream, for feature push and pull
+git pull origin feature-D //pull content from the feature-D bracch of origin 
