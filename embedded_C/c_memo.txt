@@ -1,0 +1,8 @@
+
+
+dangling pointer:  pointer -> variable, and variable not exist anymore.
+wild pointer: not initialised pointer, pointer to an unknown address 
+
+
+const int *ptrToConst; (常量指针)ptrToConst can point to different const int vars. the var value can't be changed by using *ptrToConst
+int *const ConstPtr; （指针常量）ConstPtr can't point to other int, but the int variable can change its value. AKA: The address is fixed 

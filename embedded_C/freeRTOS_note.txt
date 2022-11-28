@@ -1,0 +1,402 @@
+Soft real-time： state a time dealine, but breaching of it would not render the system useless.
+Hard real-time: breaching the dealine would result in absolute failure of the system. FreeRTOS could meet this.
+
+
+Three directory needs to be included:
+1.(source):FreeRTOS/Source/include  
+2.(porting):FreeRTOS/Source/portable/[compiler]/[architecture].  
+3.(config):path to FreeRTOSConfig.h 
+4.(heap_n.c)：FreeRTOS/Source/portable/MemMang  (if configSUPPORT_DYNAMIC_ALLOCATION == 1)
+
+
+varibles types:
+TickType_t: hold the tick count value, if (configUSE_16_BIT_TICKS==1) it is uint16_t, else uint32_t
+BaseType_t:  most efficient data type for the architecture. (32/16/8)
+‘c’ : char
+‘s’ : int16_t (short)
+‘l’:  int32_t (long)
+‘x’:  BaseType_t 
+'u':  unsigned
+'p':  pointer
+
+vTaskPrioritySet(): return void, defined in task.c
+xQueueReceive():    return BaseType_t, defined in queue.c
+pvTimerGetTimerID(): return pointer to void, defined in timers.c
+'prv': prviate functions (file scope)
+
+MARCO defines: portMAX_DELAY, defined in port...c/h, taskENTER_CRITICAL(), defined in task.h
+
+
+***************HEAP ALLOCATION*****************
+*Heap_1: basic version of pvPortMalloc(); NO vPortFree(). never delete a task or kernel object.
+memory only gets dynamically allocated by the kernel before the application starts to perform any real-time functionality
+
+*Heap_2 (use Heap_4 instead): same as Heap_1, the array is statically declared, so the application appear to consume a lot of RAM, even before any memory from the array has been assigned.
+Best fit algorithm ensures that pvPortMalloc() use the closet size of block of memeory (request 20bytes RAM if has free block 5,25,100bytes)
+Unlike heap_4, Heap_2 does not combine adjacent free blocks into a single larger block, more susceptible to fragmentation.
+Heap_2 is suitable for an application that creates and deletes tasks repeatedly, provided the size of the stack allocated to the created tasks does not change.
+
+*Heap_3.c uses the standard library malloc() and free() functions, so the heap size is defined by the linker configuration, and the configTOTAL_HEAP_SIZE setting has no affect.
+temp make malloc() and free() thread-safe by suspending the scheduler when doing this
+
+*Heap_4 uses a first fit algorithm to allocate memory
+configAPPLICATION_ALLOCATED_HEAP=1, must declare the heap addrress like (make the heap locate in fast interal RAM) 
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__ ( ( section( ".my_heap" ) ) );
+
+*Heap_5: Unlike heap_4, not limited to allocating memory from a single statically declared array; For the FreeRTOS running not a single contiguous block RAM
+ pvPortMalloc() and tasks, queues, semaphores, etc. only can be called after provided memory allocation scheme,which use vPortDefineHeapRegions() API function. 
+
+#define RAM2_START_ADDRESS ( ( uint8_t * ) 0x00020000 )
+#define RAM2_SIZE ( 32 * 1024 )
+#define RAM3_START_ADDRESS ( ( uint8_t * ) 0x00030000 )
+#define RAM3_SIZE ( 32 * 1024 )
+/* Declare an array that will be part of the heap used by heap_5. The array will be placed in RAM1 by the linker. */
+#define RAM1_HEAP_SIZE ( 30 * 1024 )
+static uint8_t ucHeap[ RAM1_HEAP_SIZE ];    //heap_5 meomery is included in RAM1, solve the heap could be overlapped with RAM1(linker scripts part)
+const HeapRegion_t xHeapRegions[] =
+{
+ { ucHeap, RAM1_HEAP_SIZE },
+ { RAM2_START_ADDRESS, RAM2_SIZE },
+ { RAM3_START_ADDRESS, RAM3_SIZE },
+ { NULL, 0 } /* Marks the end of the array. */
+};
+
+***APIs
+xPortGetFreeHeapSize() :returns the number of free bytes in the heap 
+xPortGetMinimumEverFreeHeapSize() [heap_4,heap_5] :minimum number of unallocated bytes that have ever existed in the heap, indicate how close the heap will overflow
+vApplicationMallocFailedHook();( configUSE_MALLOC_FAILED_HOOK = 1):  malloc failed hook function
+
+
+
+**************TASK managment*************************
+A single task function can create other tasks — each task is separate execution instance, with its own stack and its own copy of any automatic(stack) variables.
+*auto variable will have one copy in one task, static variable only one copy shared by each created instance of the task
+vTaskDelete( NULL );//configSUPPORT_DYNAMIC_ALLOCATION = 1 or undefined, check heap_n.c files
+
+
+BaseType_t xTaskCreate( TaskFunction_t pvTaskCode,    //name of task func,  a pointer to the task function
+ 			const char * const pcName,  //A descriptive name (string) for the task, length limited by  configMAX_TASK_NAME_LEN  
+ 			uint16_t usStackDepth,      // in words (*4bytes if 32bit),  configMINIMAL_STACK_SIZE< usStackDepth <= uint16_t/4
+			void *pvParameters, 	    // params passing to the task func, void* type
+			UBaseType_t uxPriority,      // 0 -  configMAX_PRIORITIES – 1
+ 			TaskHandle_t *pxCreatedTask );  //task handle
+
+
+
+*********TASK priorities*************************
+1.Generic Method (configUSE_PORT_OPTIMISED_TASK_SELECTION=0 or undefined), not limit to  configMAX_PRIORITIES
+2. Architecture Optimized Method (configUSE_PORT_OPTIMISED_TASK_SELECTION=1), faster
+
+***system tick
+configTICK_RATE_HZ: the frequency of "tick interrupt"
+pdMS_TO_TICKS() : milisec->ticks, it is invalid if tick freq >1000
+TickType_t xTimeInTicks = pdMS_TO_TICKS( 200 ); // tick equivalent to 200 milliseconds. 
+
+two type of task blocked state: 1. fixed time delay  2.event-driven, synchroniztion events from other tasks or interrupt
+vtaskDelay(); //delay relative tick
+vtaskDelayUntil(); //delay exactly x tick
+
+
+scheduling algorithm: routine decide which ready state task transfer into running state
+**
+configUSE_PREEMPTION   1
+configUSE_TIME_SLICING 1 //‘Fixed Priority Pre-emptive Scheduling with Time Slicing
+configUSE_TICKLESS_IDLE
+
+high priority task will immediately pre-empts low priority if high priority task is ready (event notified..), 
+low priority task will only process if high priority tasks have re-entered the blocked state
+
+configIDLE_SHOULD_YIELD 0, idle task will running for the entire time slice unless preempted by higher priority tasks
+                        1, idle task will yield on each iteration of its loop, if there are any idle priority tasks in Ready state 
+
+**
+configUSE_PREEMPTION   1
+configUSE_TIME_SLICING 0 // reduce task switch overhead, but may not fair to equal priority tasks
+task switch only will happen: 1.a higher priority task is ready 2.the current running task is blocked or suspended
+
+**Co-operative Scheduling, configUSE_PREEMPTION   0,// not used, page.98
+
+
+***************QUEUE MANAGEMENT*****************
+a communication mechainsm betweeen task-task, task-int, int-task
+exit from block state, recieved a data when read(empty)/ queue space is available when write (full)  or timeout
+
+multiple readers situation: 1.the hightest priority task will unblock to get the data 2.if all are equal priority, longest waiting time task will be unblocked
+multiple writers situation: 1.the hightest priority task will unblock if queue has available space 2.equal priority, longest waiting time task will be unblocked
+
+QueueHandle_t xQueueCreate( UBaseType_t uxQueueLength,        // queue length, number of items
+				 UBaseType_t uxItemSize );     // item size in byte
+
+xQueueReset(); //empty the Queue
+xQueueSendToBack();  // equivalent to xQueueSend() 
+xQueueSendToFront(); 
+
+xQueueReceive();  //interrupt-safe version: xQueueReceiveFromISR() 
+uxQueueMessagesWaiting();// query/return the number of items that are currently in a  queue.
+
+if sender has low priority, receiver has high priority, the queue will always empty.//as soon as sendser send, the receiver will pre-empt the sender and unblock to receive 
+if sender high, recevier low priority,the queue will normally full. //as soon as the Q has one space, sender will send
+
+Queuing Pointers (page.153):
+1. it is sharing the memoery between tasks, can't access simultaneously
+2. the RAM being pointed should remains valid, (static, should not be allocated in task stack)
+
+receive from different resource, tasks(use one queue): pass a struct contains a eunm(source_ID) and data.
+receive from different queue 'queue set': only use this if has contrains, it is less neat and eddicient then the aboved way.
+ xQueueCreateSet() //configUSE_QUEUE_SETS =1 , page.159
+ xQueueAddToSet();// adds a queue or semaphore to a queue set.
+ xQueueSelectFromSet();//If a handle is returned then the queue or semaphore referenced by the handle is known to contain data
+
+mailbox: hold data that can be read by any task, receiver read but not remove the data, only sender overwrite it.
+( xQueueOverwrite() with QUEUE with length 1, xQueuePeek() read a iterm without remove it, caution ISR version)
+
+
+***************SOFTWARE TIMER MANAGEMENT*****************
+include source file: FreeRTOS/Source/timers.c,  configUSE_TIMERS = 1  
+timer callback functions never block, if call RTOS APIs, xTicksToWait needs to be 0
+xTimerStart(), xTimerReset() or xTimerChangePeriod() will cause timer change from Dormant to Running
+
+Daemon task(timer service):process timer commands,exe callback func, created automatically once scheduler start. ( configTIMER_TASK_PRIORITY , configTIMER_TASK_STACK_DEPTH)
+"Timer command queue", calling task to Daemon task, configTIMER_QUEUE_LENGTH 
+timestamp of a timer API is record when the command sent, not when it has been processed
+
+TimerHandle_t xTimerCreate( const char * const pcTimerName,      //A descriptive name 
+ 			    TickType_t xTimerPeriodInTicks,        //The timer’s period specified in ticks, can use pdMS_TO_TICKS()
+		      	    UBaseType_t uxAutoReload,              //pdTRUE is auto-reload, pdFlASE one-shot
+			    void * pvTimerID,                           // same callback function is used by more than one software timer , detect when timers is triggered
+			    TimerCallbackFunction_t pxCallbackFunction );
+
+xTimerStart() ; //xTicksToWait: tick wait for the command queue available
+vTimerSetTimerID() ; //ID can be updated after the timer is created.  access timer directly, no need to send command Q
+pvTimerGetTimerID(); // access timer directly, no need to send command Q
+
+xTimerChangePeriod(); re-calculate when this func being called, not the timer was started, CUATION: ISR version avaliable
+
+
+
+
+***************INTERRUPT MANAGEMENT*****************
+interrupt control by Hardware, high priority than task, task schedual by software
+
+API func called in task: current context could switch to higher priority task during executing the API(eg. enter into Daemon task (high pri) when call some timer APIs())
+API func called in interrupt: pxHigherPriorityTaskWoken, a flag indicate if the context needs switch. (without this flag/set to NULL, the worst case will context switch in next tick)
+
+taskYIELD() :  request a context switch in task
+portYIELD_FROM_ISR()/ portEND_SWITCHING_ISR() : ISR version of taskYIELD() 
+
+ISR must be short(fix time), affect high pri task running, nesting. In ISR, record the INT reason and clear it. Pass work handling(print) in task, but if just store a small variable, we can put in ISR
+consider guard against, resources (variables, peripherals, memory buffers) being accessed by a task and an ISR at the same time
+Time critical, use semaphore. the task set to highest priority, after ISR, switch to that task directly by portYIELD_FROM_ISR()
+
+**Binary semaphore.  1: sync task, GiveFromISR, the task unblocked, execute once and block agian, wait for next GiveFromISR
+                    2:resouce protect
+
+xSemaphoreCreateBinary() 
+xSemaphoreTake(); //all semaphores except recusive semaphore
+xSemaphoreGiveFromISR(); //ISR version of  xSemaphoreGive()
+
+For minimize the chance of an interrupt being missed (high freq INT trigger and task process slow),the deferred interrupt handling task must be structured so that it processes 
+all the events that are already available between each call to xSemaphoreTake(). (Alternatively, counting semaphore, or a direct to task notification)
+
+portMAX_DELAY are normally bad practice in real applications, because they make it difficult to recover from an error. use a resonable timeout, if timeout(not recevied in expect time), clear the error(page.236)
+
+**Counting semaphore.(fix length Queue, only care number rather than content. Trigger multiple time, than handle them in once) 
+1.Counting events.    Give one, +1, one more needs to beprocessed.  Take one, -1, processed one.
+2.Resource management. use one, take one, if 0, run out of resource
+
+xSemaphoreCreateCounting( UBaseType_t uxMaxCount,
+ 	           UBaseType_t uxInitialCount );
+
+**'centralized deferred interrupt processing'
+xTimerPendFunctionCallFromISR()//defer interrupt processing to the RTOS daemon task, 
+xTimerPendFunctionCall() //allow a function provided by the application writer to be executed by, and in the context of, the RTOS daemon task. 
+
+BaseType_t xTimerPendFunctionCallFromISR( PendedFunction_t xFunctionToPend,     //A pointer to the function (func name) that will be executed in the daemon task, 
+ 					  void *pvParameter1,
+					  uint32_t ulParameter2,
+					  BaseType_t *pxHigherPriorityTaskWoken );
+
+void vPendableFunction( void *pvParameter1, uint32_t ulParameter2 );
+
+*******QUEUE**************
+Considerations:  UART driver uses a queue to pass characters out of the UART’s receive ISR, low effcient design
+1.use DMA, after transmision break/complete msg received, use task notification to unblock the task to process the buffer 
+2.Copying each received character into a thread safe RAM buffer, then use task notification to unblock the task to process the buffer 
+3.Processing the received characters directly within the ISR, then just using a queue to send its result 
+
+QUEUE fast enough to receive and send in ISR, use ISR version, Page.253
+
+
+*****Interrupt Nesting*******
+configMAX_SYSCALL_INTERRUPT_PRIORITY/configMAX_API_CALL_INTERRUPT_PRIORITY   :   highest interrupt priority from which xxxFromISR API functions can be called.
+configKERNEL_INTERRUPT_PRIORITY : interrupt priority used by the tick interrupt, always set the lowest possible priority
+
+Exmaple:
+7 priorities, 1->lowest, 7 ->highest
+configMAX_SYSCALL_INTERRUPT_PRIORITY = 3 && configKERNEL_INTERRUPT_PRIORITY = 1
+INT priority 1-3: not execute if in a critical section. can use FromISR APIs in their ISRs   INT make API calls can only use these, can nest, but will be masked by critical section
+INT priority 4-7: not affected by critical section, the scheduler can't prevent these INTs. can't use FromISR APIs in their ISRs
+NOTE: very strict timing accuracy, would use priority above configMAX_SYSCALL_INTERRUPT_PRIORITY. so the scheduler don't affect the INT response time
+
+***************RESOURCE MANAGEMENT***************** mutex,ciritical section
+'non-atomic' operation:  takes more than one instruction to complete, and can be interrupted
+
+e.g.
+/* The C code being compiled. */
+ PORTA |= 0x01;
+ 
+ /* The assembly code produced when the C code is compiled. */
+ LOAD R1,[#PORTA] ; Read a value from PORTA into R1
+ MOVE R2,#0x01 ; Move the absolute constant 1 into R2
+ OR R1,R2 ; Bitwise OR R1 (PORTA) with R2 (constant 1)
+ STORE R1,[#PORTA] ; Store the new value back to PORTA
+
+1.Resource management need to consider following situations:
+1. Accessing Peripherals  //two tasks print in console simuteanously
+2. Read, Modify, Write Operations   // two task update same port
+3. Non-atomic Access to Variables //update multiple members of a struct, more than one natural word size(32bit)
+4. Function Reentrancy: 'reentrant' function: treated as 'thread safe', the function is safe to call from more than one task (interrupt).
+                        must has its own stack and set of processor(harware) register values.  Only access data in its own stack. //can't have static and global data
+
+2.‘mutual exclusion’ // solution for accessing a shared resource that is not re-entrant and not thread-safe, try to not use share resource
+
+
+3.Critical Section: a very crude method of providing mutual exclusion, protect a very short code
+		   no context switch during this, disable all interrupts logical priority <= configMAX_SYSCALL_INTERRUPT_PRIORITY, 
+                   critical section can be nested.  taskENTER_CRITICAL()/ taskEXIT_CRITICAL() only legal way to change interrupt enable state for a task when RTOS is running
+                   From_ISR() version page.268
+
+4. vTaskSuspendAll(): protect code from acees by other tasks, long code region, like printf();
+                      Suspending the scheduler prevents a context switch from occurring, but leaves interrupts enabled.
+
+5. mutex is used for mutual exclusion (always be returned, 'priority inheritance'), binary semaphore is used for synchronization
+   mutex is suggest to be used for warpping around printf, in case of printf corrupt
+
+**‘priority inversion’. 
+task1->low priority   task2->high priority    task3->medium priority 
+both need to printf, but task 1 is printing and hold mutex, task2 has to wait. task3 can pre-empt task1, but task1 not return the mutex,so task2 will keep wait 
+
+***Priority inheritance: minimizes the negative effects of priority inversion // make the low priority finished first
+ works by temporarily raising the priority of the mutex holder to the priority of the highest priority task that is attempting to obtain the same mutex.
+ The low priority task that holds the mutex ‘inherits’ the priority of the task waiting for the mutex.
+CAUTION: mutexes must not be used from ISR becuase this feature
+
+'DEADLOCK' :task A and B both need take mutex1 and mutex2, task A hold mutex1 and task B hold mutex2, both of them will wait forever. solution: careful desgin
+
+Recursive Mutexes: solution for a task deadlock itself, which could happen a task try to take same mutext more than once. 
+                    A mutex required to be takes in different layer code
+
+xSemaphoreCreateMutex()->xSemaphoreTake().-> xSemaphoreGive(). 
+xSemaphoreCreateRecursiveMutex(). ->xSemaphoreTakeRecursive().-> xSemaphoreGiveRecursive()
+
+
+CAUTIONS: when take and give the same mutex (used in multiple tasks) in a tight loop, one task could take the mutex right after give the mutex, so the other task can never take the mutex 
+SOULUTIONS:call taskYIELD(); if  xTaskGetTickCount() != the tick when took the mutex //avoid switch context too freqly
+ 
+
+***** gatekeeper task
+a task used to manage certain shared resource, use a queue to serialise the access of the resource
+
+e.g: a only task that can do printf, other task needs send string to this task
+if gatekeepr taks set to low priority, other tasks command or msg remain in QUEUE (recommand)
+if ..set to high, excute immediately
+
+
+*******************Event Groups***************a set of event flag
+Unlike queues and semaphores (block or unblock a single task):
+--Event groups allow a task to wait in the Blocked state for a combination of one of more events to occur.
+--Event groups unblock all the tasks that were waiting for the same event, or combination of events, when the event occurs.
+
+configUSE_16_BIT_TICKS: 1->8bits,  0->24bits
+EventGroupHandle_t xEventGroupCreate( void );
+xEventGroupSetBits() / xEventGroupSetBitsFromISR() 
+
+EventBits_t xEventGroupWaitBits( const EventGroupHandle_t xEventGroup,
+ 				const EventBits_t uxBitsToWaitFor,      // which bits to test
+				const BaseType_t xClearOnExit,           //pdTrue: the events bit specified by uxBitsToWaitFor will be set to 0  , pdFALSE: not change the event bits
+				const BaseType_t xWaitForAllBits,         //if use bitwise OR (either) or AND (all of bits in uxBitsToWaitFor are set)
+				TickType_t xTicksToWait );
+xEventGroupClearBits();//manully clear, race conditions: more than one task using the same event group, bits are set by different tasks or ISR, solution use xClearOnExit
+
+xEventGroupSync() ;// an atomic func help mutiple task to set and wait for certain bits,synchronize with each other, example at page.316
+EventBits_t xEventGroupSync( EventGroupHandle_t xEventGroup,
+ 		             const EventBits_t uxBitsToSet,    // the bits needs to change,other bits remain what they were
+			     const EventBits_t uxBitsToWaitFor, 
+			     TickType_t xTicksToWait );
+
+
+
+****************TASK NOTIFICATIONS*************less RAM and faster than using other RTOS objects
+‘Task Notifications’ allow tasks to interact with other tasks, and to synchronize with ISRs, //configUSE_TASK_NOTIFICATIONS = 1 
+Notification State: change to pending-> task receives a notification, change to not-pending-> task reads a notification
+
+Limitations: - can't be used from send a notify from task to ISR
+	     - task notification directly send to the receiving task,so can only be processd by the sender or recevier, can't broadcating
+             - only has one 32-bit notify value, can't buffer multiple data item
+
+
+simpler version:
+xTaskNotifyGive(); /vTaskNotifyGiveFromISR();
+ulTaskNotifyTake();// xClearCountOnExit : true-> reset to 0, false-> -1, act as counting semaphore
+
+full verison:
+xTaskNotify();//can be set as +1, certain bits, new value (after recevier read-xSendQueue length1, or don't care-xQueueOverwrite() ), 
+xTaskNotifyWait();
+
+BaseType_t xTaskNotify( TaskHandle_t xTaskToNotify, 
+ 			uint32_t ulValue, 
+			eNotifyAction eAction ); // eNoAction / eSetBits / eIncrement /eSetValueWithoutOverwrite /eSetValueWithOverwrite
+
+BaseType_t xTaskNotifyWait( uint32_t ulBitsToClearOnEntry,           // the bits in the notify value will cleared when enter the func, 0x01, clear bit0, 0xfffffff reset to 0 
+			 	uint32_t ulBitsToClearOnExit,         // the bit are clears before exit the function (after the  notification value has been saved  )
+				uint32_t *pulNotificationValue,        //the task notification value
+				TickType_t xTicksToWait );
+
+UART task_notify example page.344
+ADC task_notify Example page.347
+
+Task 1 -> server task by queue,  server task -> Task 1 by task_notify. same as Task 2 page.349 
+
+
+
+************************DEBUG******************
+configASSERT() : record the failed place at source file
+/* This function must be defined in a C source file, not the FreeRTOSConfig.h header file. */
+void vAssertCalled( const char *pcFile, uint32_t ulLine )
+{
+ 	/* Inside this function, pcFile holds the name of the source file that contains 
+ 	the line that detected the error, and ulLine holds the line number in the source 
+ 	file. The pcFile and ulLine values can be printed out, or otherwise recorded, 
+ 	before the following infinite loop is entered. */
+ 	RecordErrorInformationHere( pcFile, ulLine );
+
+ 	/* Disable interrupts so the tick interrupt stops executing, then sit in a loop 
+ 	so execution does not move past the line that failed the assertion. */
+ 	taskDISABLE_INTERRUPTS();
+ 	for( ;; );
+}
+
+
+/* These following two lines must be placed in FreeRTOSConfig.h. */
+extern void vAssertCalled( const char *pcFile, uint32_t ulLine );
+#define configASSERT( x ) if( ( x ) == 0 ) vAssertCalled( __FILE__, __LINE__ )
+
+FreeRTOS+Trace 
+
+Malloc failed hook
+Malloc failed hook
+
+binary run-time statistics information: uxTaskGetSystemState()
+human readable ASCII run-time statistics information: vTaskGetRunTimeStats() 
+
+
+
+
+TIPS:
+FreeRTOS APIs handles can be store in a global struct, xQueueSelectFromSet() return the queue handles, it can check which queue by comparing the handles. share the same callfunction in timer, check timer ID
+
+ISR vs INT_handler?
+
+
+
+
